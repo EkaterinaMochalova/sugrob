@@ -84,8 +84,8 @@ func makeLook(_ mode: Mode) -> Look {
     switch mode {
     case .snow:
         // Подогнано по записи Snowhush: много мелких тусклых снежинок, частое мелкое покачивание, сплошной сугроб.
-        return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0.25...0.85, rate: 35, fall: 90,
-                    drag: 1.5, sway: 25, spin: 0, size: 1.2...3.2, bump: 0.5, settles: true, solidDrift: true)
+        return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0.35...0.95, rate: 45, fall: 90,
+                    drag: 1.5, sway: 25, spin: 0, size: 1.5...4, bump: 0.5, settles: true, solidDrift: true)
     case .leaves:
         return Look(texture: leafTexture, aspect: 1, colors: [.systemOrange, .systemRed, .systemYellow, .brown],
                     alpha: 0.85...1, rate: 8, fall: 80, drag: 1.2, sway: 45, spin: 2, size: 14...24, bump: 0.15,
