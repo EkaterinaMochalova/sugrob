@@ -9,7 +9,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build
-        run: swiftc --version && ./build.sh
+        run: |
+          swiftc --version && ./build.sh
+          lipo -archs build/Sugrob.app/Contents/MacOS/Sugrob
+          # ditto сохраняет права и подпись; без него приложение из архива не запустится.
+          ditto -c -k --keepParent build/Sugrob.app Sugrob.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sugrob-app
+          path: Sugrob.zip
 
       - name: Run, take screenshots, measure CPU
         run: |

@@ -7,7 +7,12 @@ APP=build/Sugrob.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 
-swiftc -O -target "$(uname -m)-apple-macos13" main.swift -o "$APP/Contents/MacOS/Sugrob"
+# Одна сборка для Apple Silicon и Intel.
+for arch in arm64 x86_64; do
+  swiftc -O -target "$arch-apple-macos13" main.swift -o "build/Sugrob-$arch"
+done
+lipo -create build/Sugrob-arm64 build/Sugrob-x86_64 -output "$APP/Contents/MacOS/Sugrob"
+rm build/Sugrob-arm64 build/Sugrob-x86_64
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
