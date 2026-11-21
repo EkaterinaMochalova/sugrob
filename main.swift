@@ -546,7 +546,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460)
+        .frame(width: 460, height: 620) // у сгруппированной формы нет своей высоты: без этого окно сжимается до заголовка
     }
 }
 
