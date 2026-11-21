@@ -1,0 +1,57 @@
+name: macOS
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: swiftc --version && ./build.sh
+
+      - name: Run, take screenshots, measure CPU
+        run: |
+          set -x
+          mkdir -p out
+          swiftc -O ci/mouse.swift -o out/mouse
+          system_profiler SPDisplaysDataType | grep -i resolution || true
+
+          # Снег должен быть виден на снимках; побольше, чтобы сугробы успели вырасти.
+          defaults write local.sugrob hideInScreenshots -bool false
+          defaults write local.sugrob intensity -float 3
+
+          open ~   # окно Finder — поверхность для сугроба
+          sleep 3
+          osascript -e 'tell application "Finder" to set bounds of front window to {200, 250, 900, 650}' || true
+
+          build/Sugrob.app/Contents/MacOS/Sugrob > out/app.log 2>&1 &
+          PID=$!
+          cpu() { echo "$1: $(ps -o %cpu=,rss= -p $PID)" >> out/cpu.txt; }
+
+          sleep 5;  screencapture -x out/1-start.png;  cpu start
+          sleep 25; screencapture -x out/2-30s.png;    cpu 30s
+          sleep 30; screencapture -x out/3-60s.png;    cpu 60s
+
+          # Курсор вдоль верхнего края окна Finder и вдоль низа экрана, с видео.
+          screencapture -x -V 8 out/sweep.mov &
+          VID=$!
+          sleep 1
+          out/mouse 245; out/mouse bottom
+          wait $VID || true
+          screencapture -x out/4-after-mouse.png
+
+          # Двигаем окно: его сугроб должен осыпаться.
+          osascript -e 'tell application "Finder" to set bounds of front window to {500, 400, 1200, 800}' || true
+          sleep 2; screencapture -x out/5-after-move.png; cpu end
+
+          kill -0 $PID || { echo "Сугроб упал"; cat out/app.log; exit 1; }
+          kill $PID
+          cat out/cpu.txt out/app.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: out/
