@@ -1,0 +1,12 @@
+'use strict';
+const catalog={athens:['Афины','athens.mp4','Акрополь · Запись'],florence:['Флоренция','florence.mp4','Понте-Веккьо · Запись'],rome:['Рим','rome.mp4','Пантеон · Запись'],moscow:['Москва','moscow.mp4','Городской трамвай · Запись'],tokyo:['Токио','tokyo.mp4','Осенний сад · Запись'],petersburg:['Санкт-Петербург','petersburg.jpg','Фото · Не прямая трансляция']};
+const id=new URLSearchParams(location.search).get('city')||location.hash.slice(1)||'florence';
+const item=catalog[id],city=Sugrob.cities.find(c=>c.portrait===id);
+const a=document.getElementById('a'),b=document.getElementById('b'),photo=document.getElementById('photo'),button=document.getElementById('pause');
+let active=a,standby=b,paused=false,fading=false,timer=null;
+function clock(){if(!city)return;const m=Sugrob.mood(city);document.getElementById('scene').className=m.light;document.getElementById('clock').textContent=city.name+' · '+m.time+' · Авто';}
+async function play(v){try{await v.play();}catch{paused=true;button.textContent='Воспроизвести';}}
+function resume(){paused=false;button.textContent='Пауза';play(active);if(fading)play(standby);}
+function crossfade(){if(paused||fading||!standby.readyState)return;fading=true;standby.currentTime=0;play(standby);standby.style.opacity='1';active.style.opacity='0';timer=setTimeout(()=>{active.pause();active.currentTime=0;[active,standby]=[standby,active];fading=false;if(paused)active.pause();},1000);}
+if(item&&city){document.title='Сугроб · '+item[0];document.getElementById('city').textContent=item[0];document.getElementById('source').textContent=item[2];if(item[1].endsWith('.jpg')){a.remove();b.remove();photo.src=item[1];photo.style.display='block';button.hidden=true;}else{photo.remove();a.src=b.src=item[1];a.style.opacity='1';for(const v of [a,b]){v.addEventListener('timeupdate',()=>{if(v===active&&v.duration-v.currentTime<=1.1)crossfade();});v.addEventListener('ended',()=>{if(v===active&&!fading&&!paused){v.currentTime=0;play(v);}});v.addEventListener('error',()=>document.getElementById('error').textContent='Не удалось открыть видео.');}resume();button.onclick=()=>{if(paused)resume();else{paused=true;a.pause();b.pause();button.textContent='Продолжить';}};}clock();setInterval(clock,30000);window.addEventListener('focus',clock);document.addEventListener('visibilitychange',clock);}else{document.getElementById('error').textContent='Для этого города пока нет вида.';button.hidden=true;}
+window.addEventListener('pagehide',()=>{clearTimeout(timer);a.pause();b.pause();});

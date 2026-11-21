@@ -1,0 +1,29 @@
+{
+  "tool": "built-in image_gen",
+  "prompts": [
+    [
+      "autumn",
+      "Use case: photorealistic-natural. Production transparent PNG asset for a subtle desktop atmosphere animation. A single delicate slender birch twig enters from the extreme right edge, extends horizontally toward left, slightly drooping, with 5 to 8 small naturally curled golden ochre autumn birch leaves, fine visible veins and detailed bark. Close-up real botanical photography, soft cloudy backlight, rich translucent leaves with realistic shaded undersides and dimensional contrast. Landscape 3:2 composition, branch occupies right two-thirds, left third empty transparent. Twig root cropped by RIGHT edge. Absolutely no background, sky, scenery, tabletop, vase, border, text, shadows cast on a surface or fake checkerboard. Isolated real branch with clean transparent alpha between leaves. Not a flat illustration, not an icon, no oversaturated orange."
+    ],
+    [
+      "olive",
+      "Use case: photorealistic-natural. Production transparent PNG asset for a desktop atmosphere animation. A single airy olive twig enters from the extreme RIGHT edge and reaches toward left, 10 slender dusty silver-green olive leaves on two fine gently arching stems, two tiny olives, asymmetrical elegant organic shape. Real botanical macro photography, dappled Mediterranean natural side light, nuanced detailed leaf veins, matte silvery undersides, realistic dimensional shadows on the leaves themselves. Landscape 3:2 composition, branch occupies right two-thirds, left third empty transparent. Twig base cropped by right edge. No background, scenery, vase, ground, text, border or cast shadow on backdrop. True transparent alpha between leaves. Not icon/vector/illustration."
+    ],
+    [
+      "pine",
+      "Use case: photorealistic-natural. Production transparent PNG asset for gentle desktop edge animation. One delicate stone pine branch entering from the extreme RIGHT edge toward left, two or three airy clusters of long fine green pine needles on textured slender brown wood, realistic needle translucency, rich dimensional soft natural light. Elegant sparse close-up botanical photography, not a heavy Christmas branch. Landscape 3:2 composition branch on right two-thirds, transparent space left. Root cropped by right edge. No background or scenery or snow or ornaments or text or cast shadows on backdrop. True transparent alpha with clean needles."
+    ],
+    [
+      "gull",
+      "Use case: photorealistic-natural. Production transparent PNG game sprite. A single distant-looking realistic silver-white gull gliding toward the LEFT, seen from slightly below at a three-quarter angle, wings extended in a graceful shallow arc, believable feather anatomy, dark wing tips, subtle cool grey shadows. Full bird comfortably within frame, landscape aspect ratio, centered, clean alpha transparency, no background, no sky, no sea, no clouds, no ground shadow, no text. Natural wildlife photograph, not a cartoon or letter-M pictogram."
+    ],
+    [
+      "maple",
+      "Use case: photorealistic-natural. A transparent PNG production asset for gentle desktop animation. One fine Japanese maple twig enters from the extreme RIGHT edge and reaches diagonally left, only 5 to 7 small finely serrated red amber maple leaves in a sparse elegant organic composition, some leaves turned to show veins and shaded underside, highly realistic botanical photography. Soft side light, naturally translucent copper-red leaf edges, muted rich colors, visible tiny imperfections. Landscape 3:2 frame, right two-thirds occupied, left third empty transparency. Base of twig cropped at RIGHT edge. No background, sky, ground, buildings, vase, text, border or fake transparency checkerboard. Not vector/cartoon."
+    ],
+    [
+      "cherry",
+      "Use case: photorealistic-natural. Transparent PNG production asset for gentle desktop animation. One very slender Japanese cherry blossom twig extending inward from extreme RIGHT edge toward left, three small airy clusters of pale blush sakura flowers, a few buds, dark finely textured twig, natural irregular petals, quiet elegant sparse composition. Real botanical photography with soft overcast light, subtle shadows and dimensional translucency, no overly pink saturation. Landscape 3:2 frame, branch on right two-thirds and left third empty transparent. Stem root cropped by right edge. True transparent alpha between all blossoms. No background, sky, scenery, text, vase, ground or backdrop shadow. Not illustration or vector."
+    ]
+  ]
+}

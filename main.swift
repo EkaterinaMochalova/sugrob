@@ -10,24 +10,11 @@ import ServiceManagement
 import SpriteKit
 import SwiftUI
 
-enum Mode: String, CaseIterable, Identifiable {
-    case snow, leaves, rain, petals
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .snow: return "Снег"
-        case .leaves: return "Осенние листья"
-        case .rain: return "Дождь"
-        case .petals: return "Лепестки сакуры"
-        }
-    }
-}
-
 let defaultSettings: [String: Any] = [
     "mode": Mode.snow.rawValue, "intensity": 1.0, "speed": 1.0, "size": 1.0, "opacity": 0.9,
     "paused": false, "behindWindows": false, "overFullScreen": false, "hideInScreenshots": true,
     "onWindows": true, "onGround": true, "cursor": true, "drift": 2500.0,
-    "showInMenuBar": true, "showInDock": false,
+    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25,
 ]
 
 extension Notification.Name {
@@ -165,7 +152,20 @@ final class Surface {
 }
 
 /// Одна сцена на экран. Координаты локальные для экрана, y вверх, ноль внизу.
+final class RainBead {
+    let node = SKShapeNode(ellipseOf: CGSize(width: 5, height: 2.5))
+    let surface: Surface
+    let x: CGFloat
+    var age: CGFloat = 0
+    init(surface: Surface, x: CGFloat) {
+        self.surface = surface; self.x = x
+        node.fillColor = NSColor(calibratedRed: 0.68, green: 0.81, blue: 0.9, alpha: 0.65)
+        node.strokeColor = .white.withAlphaComponent(0.4)
+        node.lineWidth = 0.5
+    }
+}
 final class SnowScene: SKScene {
+    private var beads: [RainBead] = []
     var intensity: CGFloat = 1, speedFactor: CGFloat = 1, sizeFactor: CGFloat = 1
     var snowing = true, cursor = true
     var maxResting = 2500
@@ -181,6 +181,7 @@ final class SnowScene: SKScene {
             order = []
         }
     }
+    let atmosphere = AtmosphereNode()
     let field = SKNode() // все частицы; его прозрачность — настройка «Непрозрачность»
 
     private var mode: Mode?
@@ -201,6 +202,7 @@ final class SnowScene: SKScene {
         super.init(size: screen.frame.size)
         backgroundColor = .clear
         scaleMode = .resizeFill
+        addChild(atmosphere)
         addChild(field)
         field.addChild(ground.shape)
     }
@@ -219,6 +221,7 @@ final class SnowScene: SKScene {
         let raw = CGFloat(min(currentTime - lastTime, 0.05))
         lastTime = currentTime
         guard raw > 0 else { return }
+        atmosphere.tick(TimeInterval(raw))
         let dt = raw * speedFactor
         clock += dt
 
@@ -235,6 +238,7 @@ final class SnowScene: SKScene {
         }
         if cursor { pushByCursor(raw) } else { lastMouse = nil }
         fall(dt)
+        updateBeads(dt)
         while resting.count > maxResting {
             let f = resting.removeFirst()
             if f.surface != nil { melt(f) }
@@ -278,16 +282,21 @@ final class SnowScene: SKScene {
             f.node.zRotation += f.spin * dt
 
             let out = np.y < -30 || np.x < -80 || np.x > size.width + 80 || np.y > size.height + 400
+            if !out, mode == .rain, let s = landing(x: np.x, y: np.y, prevY: p.y), CGFloat.random(in: 0...1) < 0.12 {
+                if let bead = beads.first(where: { $0.surface === s && abs($0.x - np.x) < 8 && $0.age < 1.5 }) {
+                    bead.node.xScale = min(2, bead.node.xScale + 0.2)
+                } else if beads.count < 100 {
+                    let bead = RainBead(surface: s, x: np.x)
+                    bead.node.position = CGPoint(x: np.x, y: s.top)
+                    field.addChild(bead.node); beads.append(bead)
+                }
+            }
             var gone = out
             if out {
                 f.node.removeFromParent()
-            } else if f.vy < 0, let s = landing(x: np.x, y: np.y, prevY: p.y) {
-                if look.settles {
-                    gone = settle(f, on: s)
-                } else {
-                    f.node.removeFromParent()
-                    gone = true
-                }
+            } else if look.settles, f.vy < 0, let s = landing(x: np.x, y: np.y, prevY: p.y) {
+                // Rain passes over windows and exits below the screen.
+                gone = settle(f, on: s)
             }
             if gone {
                 falling.swapAt(i, falling.count - 1)
@@ -295,6 +304,22 @@ final class SnowScene: SKScene {
             } else {
                 i += 1
             }
+        }
+    }
+
+    private func updateBeads(_ dt: CGFloat) {
+        beads.removeAll { bead in
+            let s = bead.surface
+            let valid = s === ground ? onGround : onWindows && windows.values.contains(where: { $0 === s })
+            guard mode == .rain, valid, s.visible[s.column(bead.x)], bead.age < 4 else {
+                bead.node.removeFromParent(); return true
+            }
+            bead.age += dt
+            let slide = max(0, bead.age - 1.5)
+            bead.node.position = CGPoint(x: bead.x, y: s.top - slide * slide * 10)
+            bead.node.yScale = 1 + min(2, slide)
+            bead.node.alpha = min(1, max(0, (4 - bead.age) / 1.5))
+            return false
         }
     }
 
@@ -385,6 +410,7 @@ final class SnowScene: SKScene {
 
     /// «Смести всё»: лежащее сдувает в одну сторону, и оно тает в воздухе.
     func clearAll() {
+        beads.forEach { $0.node.removeFromParent() }; beads = []
         let dir: CGFloat = Bool.random() ? 1 : -1
         for s in [ground] + Array(windows.values) {
             for f in s.flakes {
@@ -513,9 +539,15 @@ final class Overlay {
         window.orderFrontRegardless()
     }
 
-    func apply(_ d: UserDefaults) {
-        scene.setMode(Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
-        scene.snowing = !d.bool(forKey: "paused")
+    @MainActor
+    func apply(_ d: UserDefaults, weather: WeatherStore) {
+        scene.atmosphere.configure(city: nil,
+            code: weather.current?.weather_code, size: scene.size,
+            strength: d.double(forKey: "atmosphereStrength"), paused: d.bool(forKey: "paused"))
+        let effect = weather.enabled ? weather.current?.effect : (Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
+        scene.setMode(effect ?? .snow)
+        scene.field.isHidden = weather.enabled && effect == nil
+        scene.snowing = !d.bool(forKey: "paused") && effect != nil
         scene.intensity = d.double(forKey: "intensity")
         scene.speedFactor = max(d.double(forKey: "speed"), 0.1)
         scene.sizeFactor = d.double(forKey: "size")
@@ -537,6 +569,7 @@ final class Overlay {
 // MARK: - Окно настроек
 
 struct SettingsView: View {
+    @ObservedObject var weather: WeatherStore
     @AppStorage("mode") var mode = Mode.snow
     @AppStorage("paused") var paused = false
     @AppStorage("intensity") var intensity = 1.0
@@ -559,9 +592,10 @@ struct SettingsView: View {
             Section {
                 Picker("Что падает", selection: $mode) {
                     ForEach(Mode.allCases) { Text($0.title).tag($0) }
-                }
+                }.disabled(weather.enabled)
                 Toggle("Пауза", isOn: $paused)
             }
+            WeatherSettingsView(weather: weather)
             Section("Вид") {
                 Slider(value: $intensity, in: 0.1...3) { Text("Количество") }
                 Slider(value: $speed, in: 0.3...2.5) { Text("Скорость") }
@@ -610,7 +644,11 @@ struct SettingsView: View {
 
 // MARK: - Приложение
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    let weather = WeatherStore()
+    let atmosphereSound = AtmosphereSound()
+    let cityWindows = CityWindowController()
     var overlays: [Overlay] = []
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     var pauseItem: NSMenuItem!
@@ -619,6 +657,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let d = UserDefaults.standard
         d.register(defaults: defaultSettings)
+        NotificationCenter.default.addObserver(forName: Notification.Name("SugrobOpenCity"), object: nil, queue: .main) { [weak self] note in
+            if let city = note.object as? WeatherCity { Task { @MainActor [weak self] in self?.cityWindows.open(city) } }
+        }
 
         statusItem.button?.image = NSImage(systemSymbolName: "snowflake", accessibilityDescription: "Сугроб")
         let menu = NSMenu()
@@ -632,15 +673,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let center = NotificationCenter.default
         center.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.apply()
+            Task { @MainActor in self?.apply() }
         }
         center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.rebuildOverlays()
+            Task { @MainActor in self?.rebuildOverlays() }
         }
         center.addObserver(forName: .clearAll, object: nil, queue: .main) { [weak self] _ in
-            self?.clearAll()
+            Task { @MainActor in self?.clearAll() }
         }
+        center.addObserver(forName: .previewAtmosphere, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.overlays.forEach { $0.scene.atmosphere.demonstrate() } }
+        }
+        weather.onChange = { [weak self] in self?.apply() }
         rebuildOverlays()
+        weather.start()
 
         if !d.bool(forKey: "welcomed") {
             d.set(true, forKey: "welcomed")
@@ -663,7 +709,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Вызывается на каждое изменение UserDefaults, поэтому трогает только то, что поменялось.
     func apply() {
         let d = UserDefaults.standard
-        overlays.forEach { $0.apply(d) }
+        overlays.forEach { $0.apply(d, weather: weather) }
+        let soundMood = weather.city.map { CityMood(city: $0, code: weather.current?.weather_code) }
+        atmosphereSound.apply(enabled: weather.enabled && d.bool(forKey: "cityAtmosphere") && d.bool(forKey: "atmosphereSound") && !d.bool(forKey: "paused"),
+            mood: soundMood, volume: d.double(forKey: "atmosphereVolume"))
         pauseItem.state = d.bool(forKey: "paused") ? .on : .off
 
         let inMenuBar = d.bool(forKey: "showInMenuBar")
@@ -688,7 +737,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func showSettings() {
         if settingsWindow == nil {
-            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView()))
+            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(weather: weather)))
             w.title = "Сугроб"
             w.styleMask = [.titled, .closable, .miniaturizable]
             w.isReleasedWhenClosed = false
@@ -701,7 +750,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 let app = NSApplication.shared
-let delegate = AppDelegate()
+let delegate = MainActor.assumeIsolated { AppDelegate() }
 app.delegate = delegate
 app.setActivationPolicy(.accessory)
-app.run()
+withExtendedLifetime(delegate) { app.run() }

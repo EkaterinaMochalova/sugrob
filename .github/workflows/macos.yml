@@ -8,6 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Weather tests
+        run: bash tests/run.sh
+
       - name: Build
         run: |
           swiftc --version && ./build.sh
