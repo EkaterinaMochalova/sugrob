@@ -138,13 +138,29 @@ final class Surface {
             shape.path = nil
             return
         }
-        let last = heights.count - 1
+        // A wider, Gaussian profile avoids sharp peaks without changing stored snow mass.
+        let smooth = heights.indices.map { i -> CGFloat in
+            var sum: CGFloat = 0, weight: CGFloat = 0
+            for offset in -6...6 {
+                let j = i + offset
+                guard heights.indices.contains(j) else { continue }
+                let w = exp(-CGFloat(offset * offset) / 12.5)
+                sum += heights[j] * w; weight += w
+            }
+            return sum / max(weight, 0.001)
+        }
+        let points = smooth.enumerated().map {
+            CGPoint(x: x0 + (CGFloat($0.offset) + 0.5) * columnWidth, y: top + $0.element)
+        }
         let path = CGMutablePath()
         path.move(to: CGPoint(x: x0, y: top))
-        for i in heights.indices {
-            let h = (heights[max(i - 1, 0)] + 2 * heights[i] + heights[min(i + 1, last)]) / 4
-            path.addLine(to: CGPoint(x: x0 + (CGFloat(i) + 0.5) * columnWidth, y: top + h))
+        path.addLine(to: CGPoint(x: x0, y: points[0].y))
+        for i in points.indices {
+            let next = i + 1 < points.count ? points[i + 1] : CGPoint(x: x0 + width, y: points[i].y)
+            let midpoint = CGPoint(x: (points[i].x + next.x) / 2, y: (points[i].y + next.y) / 2)
+            path.addQuadCurve(to: midpoint, control: points[i])
         }
+        path.addLine(to: CGPoint(x: x0 + width, y: points.last!.y))
         path.addLine(to: CGPoint(x: x0 + width, y: top))
         path.closeSubpath()
         shape.path = path
@@ -347,7 +363,7 @@ final class SnowScene: SKScene {
             let right = c < n - 1 ? s.heights[c + 1] : -.infinity
             let goLeft = left < right || (left == right && Bool.random())
             let lower = goLeft ? left : right
-            if h - lower <= columnWidth { break }
+            if h - lower <= columnWidth * (look.solidDrift ? 0.35 : 1) { break }
             if lower == -.infinity {
                 f.node.position = CGPoint(x: goLeft ? s.x0 - 2 : s.x0 + s.width + 2, y: s.top + h)
                 f.vx = goLeft ? -20 : 20
@@ -417,8 +433,8 @@ final class SnowScene: SKScene {
                 f.surface = nil
                 f.node.isHidden = false
                 f.node.run(.sequence([
-                    .group([.moveBy(x: dir * CGFloat.random(in: 150...400), y: CGFloat.random(in: 20...120), duration: 1.2),
-                            .fadeOut(withDuration: 1.2)]),
+                    .group([.moveBy(x: dir * CGFloat.random(in: 60...140), y: CGFloat.random(in: 8...35), duration: 1.8),
+                            .fadeOut(withDuration: 1.8)]),
                     .removeFromParent(),
                 ]))
             }
@@ -436,25 +452,34 @@ final class SnowScene: SKScene {
         guard let last = lastMouse, m.x > -50, m.x < size.width + 50, m.y > -50, m.y < size.height + 50 else { return }
         let vx = (m.x - last.x) / dt, vy = (m.y - last.y) / dt
         guard hypot(vx, vy) > 20 else { return }
-        let r: CGFloat = 30
+        let r: CGFloat = 42
+        let mouseX = min(max(vx, -800), 800)
+        let mouseY = min(max(vy, -800), 800)
+        var released = 0
+        let releaseLimit = max(1, Int(90 * dt))
 
         for s in [ground] + Array(windows.values) {
             guard m.x > s.x0 - r, m.x < s.x0 + s.width + r, m.y > s.top - r, m.y < s.top + s.maxHeight + r else { continue }
             for f in s.flakes {
                 let dx = f.node.position.x - m.x, dy = f.node.position.y - m.y
-                guard hypot(dx, dy) < r else { continue }
+                let distance = hypot(dx, dy)
+                guard distance < r, released < releaseLimit else { continue }
+                let influence = pow(1 - distance / r, 2)
+                guard CGFloat.random(in: 0...1) < influence else { continue }
                 detach(f)
-                f.vx = min(max(vx * 0.3, -500), 500) + dx / r * 120 + CGFloat.random(in: -40...40)
-                f.vy = CGFloat.random(in: 80...240) + min(max(vy, 0) * 0.3, 300)
+                f.vx = mouseX * 0.08 * influence + dx / r * 24 + CGFloat.random(in: -10...10)
+                f.vy = CGFloat.random(in: 20...48) + max(0, mouseY) * 0.04 * influence
                 falling.append(f)
+                released += 1
             }
         }
         for f in falling {
             let dx = f.node.position.x - m.x, dy = f.node.position.y - m.y
             let d = hypot(dx, dy)
             guard d < r * 1.5, d > 0.1 else { continue }
-            f.vx += dx / d * 1500 * dt + vx * 0.03
-            f.vy += dy / d * 1500 * dt + vy * 0.03
+            let influence = pow(1 - d / (r * 1.5), 2)
+            f.vx += (dx / d * 160 + mouseX * 0.12) * influence * dt
+            f.vy += (dy / d * 120 + mouseY * 0.08) * influence * dt
         }
     }
 
