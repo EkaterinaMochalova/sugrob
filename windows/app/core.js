@@ -10,7 +10,7 @@
     { id: -7, name: 'Нижний Новгород', latitude: 56.33, longitude: 44.00, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'nizhny', detail: 'Тёплые отражения, ветка из-за края и дыхание воды.' }
   ];
   const defaults = { enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
-    intensity: 1, speed: 1, size: 1, opacity: 0.85, strength: 0.65, sound: false, volume: 0.25, onGround: true, onWindows: true,
+    intensity: 1, speed: 1, size: 1, opacity: 0.85, strength: 0.65, sound: false, florenceBells: false, volume: 0.25, onGround: true, onWindows: true,
     cursor: true, drift: 1800, hideInScreenshots: false, overFullScreen: false, openAtLogin: false };
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
   function validCity(value) {
@@ -75,7 +75,7 @@
     if (light === 'dusk') tint = [255, 153, 87];
     if (light === 'whiteNight') tint = [166, 199, 242];
     const edgeAsset = ['rome','florence'].includes(profile) ? 'pine' : profile === 'athens' ? 'olive' : profile === 'tokyo' ? (season === 'spring' ? 'cherry' : season === 'autumn' ? 'maple' : null) : season === 'autumn' ? 'autumn' : null;
-    const soundAsset = effect(code) ? 'rain' : ['petersburg','nizhny'].includes(profile) ? 'water' : ['rome','florence','athens'].includes(profile) ? 'leaves' : 'wind';
+    const soundAsset = ({florence:'florence-market',rome:'rome-pantheon',tokyo:'tokyo-street'})[profile] || null;
     return { profile, season, light, particle, tint, edgeAsset, soundAsset, precipitation: !!effect(code), overcast: [2, 3, 45, 48].includes(code), fog: [45, 48].includes(code), time: `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` };
   }
   // Windows arrive front-to-back. A covered edge must never collect particles.

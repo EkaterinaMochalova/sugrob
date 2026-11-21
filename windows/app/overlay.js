@@ -27,7 +27,7 @@ function renderState(next) {
   const key = `${mode}:${s.enabled}:${s.city?.id}`;
   if (key !== modeKey) { beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; }
   updateMood();
-  sounds.sync(next.audioLeader && s.enabled && s.atmosphere && s.sound && !s.paused, mood?.soundAsset, s.volume);
+  sounds.sync(next.audioLeader && s.enabled && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
 }
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {

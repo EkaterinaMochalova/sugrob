@@ -709,7 +709,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlays.forEach { $0.apply(d, weather: weather) }
         let soundMood = weather.city.map { CityMood(city: $0, code: weather.current?.weather_code) }
         atmosphereSound.apply(enabled: weather.enabled && d.bool(forKey: "cityAtmosphere") && d.bool(forKey: "atmosphereSound") && !d.bool(forKey: "paused"),
-            mood: soundMood, volume: d.double(forKey: "atmosphereVolume"))
+            mood: soundMood, volume: d.double(forKey: "atmosphereVolume"), florenceBells: d.bool(forKey: "florenceBells"))
         pauseItem.state = d.bool(forKey: "paused") ? .on : .off
 
         let inMenuBar = d.bool(forKey: "showInMenuBar")

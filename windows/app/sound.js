@@ -18,7 +18,7 @@ window.Soundscape = class {
     }
     if(this.track!==track) {
       if(this.audio) this.fade(this.audio,0,true);
-      this.audio=new Audio(`assets/${track}.wav`);this.audio.loop=true;this.audio.volume=0;
+      this.audio=new Audio(`assets/${track}.mp3`);this.audio.loop=true;this.audio.volume=0;
       this.audio.play().catch(()=>{});this.track=track;
     }
     this.fade(this.audio,Math.min(1,Math.max(0,volume))*.5);

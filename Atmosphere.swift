@@ -106,11 +106,13 @@ struct CityMood: Equatable {
         default: return season == .autumn ? "autumn" : nil
         }
     }
-    var soundAsset: String {
-        if precipitation { return "rain" }
-        if portrait == .petersburg || portrait == .nizhny { return "water" }
-        if portrait == .rome || portrait == .florence || portrait == .athens { return "leaves" }
-        return "wind"
+    var soundAsset: String? {
+        switch portrait {
+        case .florence: return "florence-market"
+        case .rome: return "rome-pantheon"
+        case .tokyo: return "tokyo-street"
+        default: return nil
+        }
     }
 
     var tint: NSColor {
@@ -205,19 +207,20 @@ enum PresenceAssets {
 @MainActor final class AtmosphereSound {
     private var player: AVAudioPlayer?
     private var track: String?
-    func apply(enabled: Bool, mood: CityMood?, volume: Double) {
-        guard enabled, let mood, let url = PresenceAssets.url(mood.soundAsset, extension: "wav") else {
+    func apply(enabled: Bool, mood: CityMood?, volume: Double, florenceBells: Bool = false) {
+        let selected = mood?.portrait == .florence && florenceBells ? "florence-bells" : mood?.soundAsset
+        guard enabled, let selected, let url = PresenceAssets.url(selected, extension: "mp3") else {
             let old = player; player = nil; track = nil
             old?.setVolume(0, fadeDuration: 0.5)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { old?.stop() }
             return
         }
-        if track != mood.soundAsset {
+        if track != selected {
             let old = player
             old?.setVolume(0, fadeDuration: 0.8)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { old?.stop() }
             player = try? AVAudioPlayer(contentsOf: url)
-            track = mood.soundAsset
+            track = selected
             player?.numberOfLoops = -1
             player?.volume = 0
             player?.play()

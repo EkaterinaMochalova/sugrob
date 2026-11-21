@@ -86,6 +86,11 @@ test('Presence chooses seasonal imagery and sound is opt-in', () => {
   assert.equal(C.mood(C.cities[4], new Date('2026-10-15T12:00:00Z')).edgeAsset, 'maple');
   assert.equal(C.mood(C.cities[0], new Date('2026-01-15T12:00:00Z')).edgeAsset, null);
   assert.equal(C.mood(C.cities[2]).edgeAsset, 'olive');
-  assert.equal(C.mood(C.cities[3]).soundAsset, 'water');
-  assert.equal(C.mood(C.cities[3], new Date(), 61).soundAsset, 'rain');
+  assert.equal(C.mood(C.cities[3]).soundAsset, null);
+  assert.equal(C.mood(C.cities[3], new Date(), 61).soundAsset, null);
+});
+
+test('Only Florence, Rome and Tokyo have recordings, regardless of precipitation',()=>{
+ const expected={florence:'florence-market',rome:'rome-pantheon',tokyo:'tokyo-street'};
+ for(const city of C.cities) for(const code of [0,61,71]) assert.equal(C.mood(city,new Date(),code).soundAsset,expected[city.portrait]||null);
 });

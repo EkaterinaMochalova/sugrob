@@ -46,9 +46,15 @@ func checkAtmosphere() throws {
     precondition(CityMood(city: CityPortrait.tokyo.city, date: november).edgeAsset == "maple")
     precondition(CityMood(city: CityPortrait.moscow.city, date: winter).edgeAsset == nil)
     precondition(CityMood(city: CityPortrait.athens.city, date: winter).edgeAsset == "olive")
-    precondition(CityMood(city: CityPortrait.petersburg.city, code: 0).soundAsset == "water")
-    precondition(CityMood(city: CityPortrait.petersburg.city, code: 61).soundAsset == "rain")
+    precondition(CityMood(city: CityPortrait.petersburg.city, code: 0).soundAsset == nil)
+    precondition(CityMood(city: CityPortrait.petersburg.city, code: 61).soundAsset == nil)
     for name in ["autumn", "olive", "pine", "maple", "cherry", "gull"] { precondition(PresenceAssets.image(name) != nil) }
-    for name in ["wind", "water", "leaves", "rain"] { precondition(PresenceAssets.url(name, extension: "wav") != nil) }
+    for name in ["florence-market", "florence-bells", "rome-pantheon", "tokyo-street"] { precondition(PresenceAssets.url(name, extension: "mp3") != nil) }
+    for city in [CityPortrait.moscow, .athens, .petersburg, .nizhny] {
+        for code in [0, 61, 71] { precondition(CityMood(city: city.city, code: code).soundAsset == nil) }
+    }
+    precondition(CityMood(city: CityPortrait.florence.city, code: 61).soundAsset == "florence-market")
+    precondition(CityMood(city: CityPortrait.rome.city, code: 71).soundAsset == "rome-pantheon")
+    precondition(CityMood(city: CityPortrait.tokyo.city).soundAsset == "tokyo-street")
     print("PASS: seven portraits, city matching, persistence, local clocks, DST, seasons, white nights, offline and precipitation")
 }

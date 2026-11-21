@@ -24,7 +24,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundleName</key><string>Sugrob</string>
 	<key>CFBundleDisplayName</key><string>Сугроб</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
-	<key>CFBundleShortVersionString</key><string>1.4</string>
+	<key>CFBundleShortVersionString</key><string>1.4.1</string>
 	<key>CFBundleVersion</key><string>1</string>
 	<key>LSMinimumSystemVersion</key><string>13.0</string>
 	<key>LSUIElement</key><true/>
@@ -34,7 +34,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 mkdir -p "$APP/Contents/Resources/AtmosphereAssets"
-cp assets/*.png assets/*.wav "$APP/Contents/Resources/AtmosphereAssets/"
+cp assets/*.png assets/*.mp3 "$APP/Contents/Resources/AtmosphereAssets/"
 
 
 codesign --force --sign - "$APP"

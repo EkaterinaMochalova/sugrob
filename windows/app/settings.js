@@ -33,6 +33,10 @@ function render(next) {
   $('enabled').disabled = !s.city; $('atmosphere').disabled = !s.city;
   $('strength').disabled = !s.enabled || !s.atmosphere; $('mode').disabled = s.enabled;
   $('preview').disabled = !s.enabled || !s.atmosphere || s.paused;
+  const hasSound = s.city && C.mood(s.city).soundAsset;
+  $('sound-controls').hidden = !hasSound;
+  $('atmosphere').parentElement.hidden = !hasSound;
+  $('florence-choice').hidden = portrait?.portrait !== 'florence' || !s.sound;
   $('volume').disabled = !s.sound;
   $('refresh').disabled = !s.enabled || next.weather.loading;
   const w = next.weather;

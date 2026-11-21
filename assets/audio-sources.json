@@ -1,0 +1,10 @@
+{
+  "note": "Recordings supplied by the user. Filenames retain source attribution; no independent license determination is implied.",
+  "processing": "24 kHz stereo MP3, loudnorm target -24 LUFS / -3 dBTP, 0.6s fade-in and 0.8s fade-out; original files unchanged.",
+  "tracks": {
+    "florence-market.mp3": "freesound_community-grocery-largo-annigoni-75769.mp3",
+    "florence-bells.mp3": "freesound_community-florence-bells-31015.mp3",
+    "rome-pantheon.mp3": "freesound_community-pantheon-rome-23700.mp3",
+    "tokyo-street.mp3": "freesound_community-tokyo-street-28122.mp3"
+  }
+}

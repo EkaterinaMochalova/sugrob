@@ -200,6 +200,7 @@ struct WeatherSettingsView: View {
     @AppStorage("cityAtmosphere") private var atmosphere = false
     @AppStorage("atmosphereStrength") private var strength = 0.65
     @AppStorage("atmosphereSound") private var sound = false
+    @AppStorage("florenceBells") private var florenceBells = false
     @AppStorage("atmosphereVolume") private var volume = 0.25
     @AppStorage("paused") private var paused = false
     @ObservedObject var weather: WeatherStore
@@ -222,10 +223,12 @@ struct WeatherSettingsView: View {
             )).disabled(weather.city == nil)
             if let city = weather.city {
                 Text(city.title).font(.headline).fixedSize(horizontal: false, vertical: true)
+                if CityMood(city: city).soundAsset != nil {
                 Picker("Режим", selection: $atmosphere) {
                     Text("Точная погода").tag(false)
                     Text("Погода и звуки").tag(true)
                 }.pickerStyle(.segmented)
+                }
                 if atmosphere {
                     Text("Погода выбранного города на рабочем столе.").font(.caption)
                     TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -233,10 +236,19 @@ struct WeatherSettingsView: View {
                         Text("\(CityMood.localTime(context.date, city: city)) · \(mood.season.rawValue) · \(mood.light.rawValue)")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Toggle("Звуковой фон", isOn: $sound)
-                    if sound { Slider(value: $volume, in: 0...1) { Text("Громкость") } }
-                    Text("Тихий синтезированный ветер, вода и шелест. Это звуковой образ, не запись из города.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    if CityMood(city: city).soundAsset != nil {
+                        Toggle("Звуковой фон", isOn: $sound)
+                        if sound {
+                            if CityPortrait.matching(city) == .florence {
+                                Picker("Запись", selection: $florenceBells) {
+                                    Text("Площадь").tag(false)
+                                    Text("Колокола").tag(true)
+                                }.pickerStyle(.segmented)
+                            }
+                            Slider(value: $volume, in: 0...1) { Text("Громкость") }
+                        }
+                        Text("Запись города, не прямая трансляция.").font(.caption).foregroundStyle(.secondary)
+                    }
                     Text("Актуальная погода требует подключения к интернету.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
