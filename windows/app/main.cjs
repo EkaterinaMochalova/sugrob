@@ -53,18 +53,6 @@ function secure(win) {
   win.webContents.on('will-navigate', event => event.preventDefault());
 }
 function preferences() { return { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' }; }
-const cityViews = new Map();
-function openCityView() {
-  if (!settings.city) return;
-  const id = core.portrait(settings.city)?.portrait;
-  if (!['rome','florence','petersburg','moscow','tokyo','athens'].includes(id)) return;
-  const existing = cityViews.get(id);
-  if (existing && !existing.isDestroyed()) { existing.show(); existing.focus(); return; }
-  const win = new BrowserWindow({title:'Окно в город · '+settings.city.name,width:390,height:780,minWidth:280,minHeight:430,autoHideMenuBar:true,backgroundColor:'#f2f1eb',webPreferences:{contextIsolation:true,sandbox:true,nodeIntegration:false,autoplayPolicy:'no-user-gesture-required'}});
-  secure(win); cityViews.set(id,win);
-  win.loadFile(path.join(__dirname,'city-media','view.html'),{query:{city:id}});
-  win.on('closed',()=>cityViews.delete(id));
-}
 function showSettings() {
   if (settingsWindow && !settingsWindow.isDestroyed()) { settingsWindow.show(); settingsWindow.focus(); return; }
   settingsWindow = new BrowserWindow({ title: 'Сугроб', width: 600, height: 810, minWidth: 490, minHeight: 500,
@@ -154,7 +142,6 @@ else {
     });
     ipcMain.handle('search', async (e, query) => { authorized(e, true); try { return { cities: await weather.search(query) }; } catch { return { error: 'Не удалось найти город. Проверьте интернет и повторите.' }; } });
     ipcMain.handle('refresh', e => { authorized(e, true); void weather.refresh(); });
-    ipcMain.handle('open-city', e => { authorized(e, true); openCityView(); });
     ipcMain.handle('preview', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview'); });
     ipcMain.handle('clear', e => { authorized(e, true); clear(); });
     ipcMain.handle('quit', e => { authorized(e, true); app.quit(); });

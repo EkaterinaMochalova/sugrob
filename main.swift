@@ -648,7 +648,6 @@ struct SettingsView: View {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let weather = WeatherStore()
     let atmosphereSound = AtmosphereSound()
-    let cityWindows = CityWindowController()
     var overlays: [Overlay] = []
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     var pauseItem: NSMenuItem!
@@ -657,9 +656,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let d = UserDefaults.standard
         d.register(defaults: defaultSettings)
-        NotificationCenter.default.addObserver(forName: Notification.Name("SugrobOpenCity"), object: nil, queue: .main) { [weak self] note in
-            if let city = note.object as? WeatherCity { Task { @MainActor [weak self] in self?.cityWindows.open(city) } }
-        }
+
 
         statusItem.button?.image = NSImage(systemSymbolName: "snowflake", accessibilityDescription: "Сугроб")
         let menu = NSMenu()

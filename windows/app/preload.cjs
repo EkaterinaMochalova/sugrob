@@ -1,6 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('sugrob', {
-  openCity: () => ipcRenderer.invoke('open-city'),
   state: () => ipcRenderer.invoke('state'),
   update: patch => ipcRenderer.invoke('update', patch),
   select: (city, atmosphere) => ipcRenderer.invoke('select', city, atmosphere),

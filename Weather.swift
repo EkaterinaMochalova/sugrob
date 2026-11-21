@@ -222,16 +222,12 @@ struct WeatherSettingsView: View {
             )).disabled(weather.city == nil)
             if let city = weather.city {
                 Text(city.title).font(.headline).fixedSize(horizontal: false, vertical: true)
-                if [.florence, .rome, .moscow, .tokyo, .petersburg, .athens].contains(CityPortrait.matching(city)) {
-                    Button("Открыть окно в город") { NotificationCenter.default.post(name: Notification.Name("SugrobOpenCity"), object: city) }
-                    Text("Записанный вид. Свет автоматически следует времени города; сезон съёмки не меняется.").font(.caption).foregroundStyle(.secondary)
-                }
                 Picker("Режим", selection: $atmosphere) {
                     Text("Точная погода").tag(false)
                     Text("Погода и звуки").tag(true)
                 }.pickerStyle(.segmented)
                 if atmosphere {
-                    Text("Погода на рабочем столе, вид города — в отдельном окне.").font(.caption)
+                    Text("Погода выбранного города на рабочем столе.").font(.caption)
                     TimelineView(.periodic(from: .now, by: 60)) { context in
                         let mood = CityMood(city: city, date: context.date)
                         Text("\(CityMood.localTime(context.date, city: city)) · \(mood.season.rawValue) · \(mood.light.rawValue)")
@@ -241,7 +237,7 @@ struct WeatherSettingsView: View {
                     if sound { Slider(value: $volume, in: 0...1) { Text("Громкость") } }
                     Text("Тихий синтезированный ветер, вода и шелест. Это звуковой образ, не запись из города.")
                         .font(.caption).foregroundStyle(.secondary)
-                    Text("Видео и фото доступны без сети. Актуальная погода требует подключения.")
+                    Text("Актуальная погода требует подключения к интернету.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

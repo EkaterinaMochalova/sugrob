@@ -1,7 +1,6 @@
 'use strict';
 const api = window.sugrob, C = window.Sugrob, $ = id => document.getElementById(id);
 let state, searchToken = 0;
-$('open-city').onclick = () => api.openCity().catch(error);
 const seasonNames = { winter: 'Зима', spring: 'Весна', summer: 'Лето', autumn: 'Осень' };
 const lightNames = { day: 'День', night: 'Ночь', dawn: 'Рассвет', dusk: 'Вечер', whiteNight: 'Белая ночь' };
 function error(e) { $('error').textContent = 'Не удалось выполнить действие. Попробуйте ещё раз.'; console.error(e); }
@@ -30,8 +29,7 @@ function render(next) {
   $('city-name').textContent = s.city ? [s.city.name, s.city.admin1, s.city.country].filter(Boolean).join(', ') : 'Выбери город или оставь ручной эффект';
   const portrait = s.city && C.portrait(s.city);
   for (const button of $('presets').children) button.setAttribute('aria-pressed', String(button.dataset.city === portrait?.portrait));
-  $('city-detail').textContent = s.city ? 'Погода на рабочем столе, вид города — в отдельном окне.' : '';
-  $('open-city').disabled = !['rome','florence','petersburg','moscow','tokyo','athens'].includes(portrait?.portrait);
+  $('city-detail').textContent = s.city ? 'Погода выбранного города на рабочем столе.' : '';
   $('enabled').disabled = !s.city; $('atmosphere').disabled = !s.city;
   $('strength').disabled = !s.enabled || !s.atmosphere; $('mode').disabled = s.enabled;
   $('preview').disabled = !s.enabled || !s.atmosphere || s.paused;

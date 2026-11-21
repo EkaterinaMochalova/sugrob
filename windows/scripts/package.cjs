@@ -7,7 +7,7 @@ const path = require('node:path');
     platform: 'win32', arch, electronVersion: '45.4.1', asar: true, overwrite: true,
     electronZipDir: process.env.SUGROB_ELECTRON_ZIPS,
     out: path.join(__dirname, '..', 'dist'), icon: path.join(__dirname, '..', 'app', 'icon.ico'),
-    ignore: [/^\/dist($|\/)/, /^\/test($|\/)/, /^\/scripts($|\/)/, /^\/node_modules($|\/)/],
+    ignore: [/^\/app\/city-media($|\/)/, /^\/dist($|\/)/, /^\/test($|\/)/, /^\/scripts($|\/)/, /^\/node_modules($|\/)/],
     win32metadata: { ProductName: 'Сугроб', FileDescription: 'Sugrob — погода и атмосфера городов' }
   });
   console.log(output.join('\n'));
