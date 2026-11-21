@@ -18,9 +18,8 @@ jobs:
           swiftc -O ci/mouse.swift -o out/mouse
           system_profiler SPDisplaysDataType | grep -i resolution || true
 
-          # Снег должен быть виден на снимках; побольше, чтобы сугробы успели вырасти.
+          # Снег должен быть виден на снимках. Количество — по умолчанию, чтобы видеть настоящую плотность.
           defaults write local.sugrob hideInScreenshots -bool false
-          defaults write local.sugrob intensity -float 3
 
           open ~   # окно Finder — поверхность для сугроба
           sleep 3

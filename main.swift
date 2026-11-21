@@ -72,30 +72,32 @@ struct Look {
     let rate: CGFloat // штук в секунду на 1440 пунктов ширины экрана
     let fall: CGFloat // скорость падения
     let drag: CGFloat // как быстро частица теряет толчок и возвращается к падению
-    let sway: CGFloat // размах покачивания вбок
+    let sway: CGFloat // скорость покачивания вбок; размах ≈ sway / 3,5 пункта
     let spin: CGFloat // вращение, радиан в секунду
     let size: ClosedRange<CGFloat> // высота частицы
     let bump: CGFloat // на сколько частица поднимает сугроб, доля её высоты
     let settles: Bool
+    let solidDrift: Bool // сугроб рисуется сплошной белой полосой, а лежащие частицы прячутся
 }
 
 func makeLook(_ mode: Mode) -> Look {
     switch mode {
     case .snow:
-        return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0.75...1, rate: 40, fall: 55,
-                    drag: 1.5, sway: 15, spin: 0, size: 3...8, bump: 0.35, settles: true)
+        // Подогнано по записи Snowhush: много мелких тусклых снежинок, частое мелкое покачивание, сплошной сугроб.
+        return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0.25...0.85, rate: 35, fall: 90,
+                    drag: 1.5, sway: 25, spin: 0, size: 1.2...3.2, bump: 0.5, settles: true, solidDrift: true)
     case .leaves:
         return Look(texture: leafTexture, aspect: 1, colors: [.systemOrange, .systemRed, .systemYellow, .brown],
                     alpha: 0.85...1, rate: 8, fall: 80, drag: 1.2, sway: 45, spin: 2, size: 14...24, bump: 0.15,
-                    settles: true)
+                    settles: true, solidDrift: false)
     case .rain:
         return Look(texture: dropTexture, aspect: 3.0 / 40, colors: [.white], alpha: 0.3...0.6, rate: 150, fall: 900,
-                    drag: 8, sway: 0, spin: 0, size: 18...32, bump: 0, settles: false)
+                    drag: 8, sway: 0, spin: 0, size: 18...32, bump: 0, settles: false, solidDrift: false)
     case .petals:
         return Look(texture: petalTexture, aspect: 16.0 / 26,
                     colors: [NSColor(red: 1, green: 0.78, blue: 0.85, alpha: 1), NSColor(red: 1, green: 0.9, blue: 0.93, alpha: 1)],
                     alpha: 0.85...1, rate: 10, fall: 70, drag: 1.3, sway: 35, spin: 2.5, size: 9...15, bump: 0.15,
-                    settles: true)
+                    settles: true, solidDrift: false)
     }
 }
 
@@ -107,7 +109,8 @@ final class Flake {
     let node: SKSpriteNode
     var vx: CGFloat = 0, vy: CGFloat = 0
     let phase = CGFloat.random(in: 0...(2 * .pi))
-    let weight = CGFloat.random(in: 0.75...1.25)
+    let freq = CGFloat.random(in: 2.5...4.5) // частота покачивания, рад/с
+    var weight: CGFloat = 1 // множитель скорости падения и покачивания: дальние медленнее
     var spin: CGFloat = 0
     var surface: Surface? // на чём лежит; nil — падает
     var column = 0
@@ -121,6 +124,8 @@ final class Surface {
     var heights: [CGFloat]
     var visible: [Bool] // столбик не закрыт окном, которое стоит впереди
     var flakes: [Flake] = []
+    let shape = SKShapeNode() // сплошной сугроб
+    var dirty = false
 
     init(x0: CGFloat, top: CGFloat, width: CGFloat, maxHeight: CGFloat) {
         self.x0 = x0
@@ -130,9 +135,33 @@ final class Surface {
         let n = max(1, Int(width / columnWidth))
         heights = Array(repeating: 0, count: n)
         visible = Array(repeating: true, count: n)
+        shape.fillColor = .white
+        shape.strokeColor = .clear
+        shape.lineWidth = 0
+        shape.alpha = 0.95
+        shape.zPosition = 1 // поверх падающих: при ignoresSiblingOrder иначе порядок не определён
     }
 
     func column(_ x: CGFloat) -> Int { min(max(Int((x - x0) / columnWidth), 0), heights.count - 1) }
+
+    /// Контур сугроба по сглаженным высотам столбиков.
+    func redraw() {
+        dirty = false
+        guard heights.contains(where: { $0 > 0 }) else {
+            shape.path = nil
+            return
+        }
+        let last = heights.count - 1
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: x0, y: top))
+        for i in heights.indices {
+            let h = (heights[max(i - 1, 0)] + 2 * heights[i] + heights[min(i + 1, last)]) / 4
+            path.addLine(to: CGPoint(x: x0 + (CGFloat(i) + 0.5) * columnWidth, y: top + h))
+        }
+        path.addLine(to: CGPoint(x: x0 + width, y: top))
+        path.closeSubpath()
+        shape.path = path
+    }
 }
 
 /// Одна сцена на экран. Координаты локальные для экрана, y вверх, ноль внизу.
@@ -144,7 +173,10 @@ final class SnowScene: SKScene {
     var onWindows = true {
         didSet {
             guard !onWindows else { return }
-            for s in windows.values { drop(s) }
+            for s in windows.values {
+                drop(s)
+                s.shape.removeFromParent()
+            }
             windows = [:]
             order = []
         }
@@ -165,11 +197,12 @@ final class SnowScene: SKScene {
 
     init(screen: NSScreen) {
         origin = screen.frame.origin
-        ground = Surface(x0: 0, top: 0, width: screen.frame.width, maxHeight: 50)
+        ground = Surface(x0: 0, top: 0, width: screen.frame.width, maxHeight: 24)
         super.init(size: screen.frame.size)
         backgroundColor = .clear
         scaleMode = .resizeFill
         addChild(field)
+        field.addChild(ground.shape)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -206,18 +239,25 @@ final class SnowScene: SKScene {
             let f = resting.removeFirst()
             if f.surface != nil { melt(f) }
         }
+        for s in [ground] + Array(windows.values) where s.dirty {
+            s.redraw()
+            s.shape.isHidden = !look.solidDrift
+        }
     }
 
     private func spawn() {
-        let h = CGFloat.random(in: look.size) * sizeFactor
+        // Глубина: 0 — далеко (мелкая, тусклая, медленная), 1 — близко. Без неё снег выглядит плоской сеткой точек.
+        let depth = CGFloat.random(in: 0...1)
+        let h = (look.size.lowerBound + (look.size.upperBound - look.size.lowerBound) * depth) * sizeFactor
         let node = SKSpriteNode(texture: look.texture, color: look.colors.randomElement()!,
                                 size: CGSize(width: h * look.aspect, height: h))
         node.colorBlendFactor = 1
-        node.alpha = .random(in: look.alpha)
+        node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }
         field.addChild(node)
         let f = Flake(node: node)
+        f.weight = 0.6 + 0.6 * depth
         f.vy = -look.fall * f.weight
         f.spin = .random(in: -look.spin...look.spin)
         falling.append(f)
@@ -229,9 +269,11 @@ final class SnowScene: SKScene {
         while i < falling.count {
             let f = falling[i]
             let p = f.node.position
-            f.vx += (sin(clock * 0.8 + f.phase) * look.sway - f.vx) * k
+            // vx — толчки и ветер, они гаснут; покачивание добавляется отдельно, чтобы сопротивление его не гасило.
+            f.vx -= f.vx * k
             f.vy += (-look.fall * f.weight - f.vy) * k
-            let np = CGPoint(x: p.x + f.vx * dt, y: p.y + f.vy * dt)
+            let sway = sin(clock * f.freq + f.phase) * look.sway * f.weight
+            let np = CGPoint(x: p.x + (f.vx + sway) * dt, y: p.y + f.vy * dt)
             f.node.position = np
             f.node.zRotation += f.spin * dt
 
@@ -301,6 +343,8 @@ final class SnowScene: SKScene {
         f.column = c
         f.vx = 0
         f.vy = 0
+        f.node.isHidden = look.solidDrift
+        s.dirty = true
         s.flakes.append(f)
         resting.append(f)
         return true
@@ -311,6 +355,8 @@ final class SnowScene: SKScene {
         s.heights[f.column] = max(0, s.heights[f.column] - f.bump)
         if let i = s.flakes.firstIndex(where: { $0 === f }) { s.flakes.remove(at: i) }
         f.surface = nil
+        f.node.isHidden = false
+        s.dirty = true
     }
 
     private func melt(_ f: Flake) {
@@ -327,7 +373,9 @@ final class SnowScene: SKScene {
                 continue
             }
             s.heights[f.column] = 0
+            s.dirty = true
             f.surface = nil
+            f.node.isHidden = false
             f.vx = CGFloat.random(in: -15...15)
             f.vy = -CGFloat.random(in: 10...40)
             falling.append(f)
@@ -341,6 +389,7 @@ final class SnowScene: SKScene {
         for s in [ground] + Array(windows.values) {
             for f in s.flakes {
                 f.surface = nil
+                f.node.isHidden = false
                 f.node.run(.sequence([
                     .group([.moveBy(x: dir * CGFloat.random(in: 150...400), y: CGFloat.random(in: 20...120), duration: 1.2),
                             .fadeOut(withDuration: 1.2)]),
@@ -349,6 +398,7 @@ final class SnowScene: SKScene {
             }
             s.flakes = []
             s.heights = Array(repeating: 0, count: s.heights.count)
+            s.dirty = true
         }
         resting = []
     }
@@ -410,10 +460,17 @@ final class SnowScene: SKScene {
             seen.insert(w.id)
             if let old = windows[w.id], old.x0 != r.minX || old.top != r.maxY || old.width != r.width {
                 drop(old)
+                old.shape.removeFromParent()
                 windows[w.id] = nil
             }
-            let s = windows[w.id] ?? Surface(x0: r.minX, top: r.maxY, width: r.width, maxHeight: 30)
-            windows[w.id] = s
+            let s: Surface
+            if let existing = windows[w.id] {
+                s = existing
+            } else {
+                s = Surface(x0: r.minX, top: r.maxY, width: r.width, maxHeight: 16)
+                field.addChild(s.shape)
+                windows[w.id] = s
+            }
             let lineY = r.maxY + 1
             let front = all[..<k].map { $0.rect }.filter { $0.minY <= lineY && $0.maxY > lineY }
             for c in s.heights.indices {
@@ -425,6 +482,7 @@ final class SnowScene: SKScene {
         }
         for (id, s) in windows where !seen.contains(id) {
             drop(s)
+            s.shape.removeFromParent()
             windows[id] = nil
         }
         order = newOrder
