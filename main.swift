@@ -238,6 +238,7 @@ final class SnowScene: SKScene {
 
     private var stormWait: CGFloat = 8
     private var lightning: SKShapeNode?
+    private var lastLightningPreview: TimeInterval = -100
     private var lightningAge: CGFloat = 0
     private var cloudIndex = 0
     private var mode: Mode?
@@ -288,7 +289,7 @@ final class SnowScene: SKScene {
         }
     }
 
-    func hideLightning() { lightning?.removeFromParent(); lightning = nil; stormWait = 8 }
+    func hideLightning() { childNode(withName: "lightningPreview")?.removeFromParent(); lightning?.removeFromParent(); lightning = nil; stormWait = 8 }
     private func updateLightning(_ dt: CGFloat) {
         guard mode == .storm, snowing,
               UserDefaults.standard.object(forKey: "lightning") as? Bool != false,
@@ -303,6 +304,10 @@ final class SnowScene: SKScene {
         stormWait -= dt
         guard stormWait <= 0 else { return }
         stormWait = .random(in: 12...24)
+        let bolt = makeLightning()
+        field.addChild(bolt); lightning = bolt; lightningAge = 0
+    }
+    private func makeLightning() -> SKShapeNode {
         let path = CGMutablePath()
         var point = CGPoint(x: size.width * .random(in: 0.1...0.9), y: size.height)
         path.move(to: point)
@@ -313,7 +318,18 @@ final class SnowScene: SKScene {
         let bolt = SKShapeNode(path: path)
         bolt.strokeColor = NSColor(red: 0.78, green: 0.85, blue: 1, alpha: 1)
         bolt.lineWidth = 1.5; bolt.glowWidth = 12; bolt.alpha = 0.45
-        field.addChild(bolt); lightning = bolt; lightningAge = 0
+        return bolt
+    }
+    func previewLightning() {
+        let now = ProcessInfo.processInfo.systemUptime
+        guard !isPaused, now - lastLightningPreview >= 3,
+              UserDefaults.standard.object(forKey: "lightning") as? Bool != false,
+              !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        lastLightningPreview = now
+        let bolt = makeLightning()
+        bolt.name = "lightningPreview"
+        addChild(bolt)
+        bolt.run(.sequence([.fadeOut(withDuration: 0.65), .removeFromParent()]))
     }
 
     override func update(_ currentTime: TimeInterval) {
@@ -741,6 +757,9 @@ struct SettingsView: View {
             }
             Section("Гроза") {
                 Toggle("Вспышки молнии", isOn: $lightning)
+                Button("Проверить молнию") { NotificationCenter.default.post(name: .previewLightning, object: nil) }
+                    .disabled(paused || !lightning || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+                Text("Одна вспышка без смены погоды. Между проверками — 3 секунды.").font(.caption).foregroundStyle(.secondary)
                 Text("Редкие мягкие вспышки. При уменьшении движения в macOS молнии отключаются.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Вид") {
@@ -806,6 +825,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let d = UserDefaults.standard
         d.register(defaults: defaultSettings)
+        if d.string(forKey: "appTheme") == "lavender" { d.set("blue", forKey: "appTheme") }
 
 
         statusItem.button?.image = NSImage(systemSymbolName: "snowflake", accessibilityDescription: "Сугроб")
@@ -827,6 +847,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         center.addObserver(forName: .clearAll, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.clearAll() }
+        }
+        center.addObserver(forName: .previewLightning, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.overlays.forEach { $0.scene.previewLightning() } }
         }
         center.addObserver(forName: .previewAtmosphere, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.overlays.forEach { $0.scene.atmosphere.demonstrate() } }

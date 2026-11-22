@@ -1,19 +1,21 @@
 import SwiftUI
 
 enum AppTheme: String, CaseIterable, Identifiable {
-    case sage, sand, blue, lavender
+    case sand, sage, blue, rocks, clouds
     var id: String { rawValue }
     var title: String { switch self {
-    case .sage: return "Шалфей"
+    case .sage: return "Лист"
     case .sand: return "Песок"
-    case .blue: return "Голубая"
-    case .lavender: return "Лаванда"
+    case .blue: return "Туман"
+    case .rocks: return "Скалы"
+    case .clouds: return "Облака"
     } }
     private var rgb: (UInt32, UInt32, UInt32) { switch self {
     case .sage: return (0xF5F3E9, 0xE5EADD, 0x263B32)
     case .sand: return (0xFAF3E9, 0xEEDFCB, 0x594333)
-    case .blue: return (0xEFF4F8, 0xDBE7F0, 0x293F56)
-    case .lavender: return (0xF5F0F8, 0xE8DFF0, 0x493855)
+    case .blue: return (0xEFF2F1, 0xDDE4E2, 0x394C48)
+    case .rocks: return (0xE8E7E5, 0xCECDCA, 0x383B40)
+    case .clouds: return (0xF5F8FC, 0xE4ECF7, 0x344B66)
     } }
     private func color(_ n: UInt32) -> Color { Color(red: Double((n >> 16) & 255)/255, green: Double((n >> 8) & 255)/255, blue: Double(n & 255)/255) }
     var paper: Color { color(rgb.0) }

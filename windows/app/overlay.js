@@ -4,7 +4,7 @@ const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
 const background = document.createElement('canvas'), bg = background.getContext('2d');
 let w = 1, h = 1, dpr = 1, state, mode = 'snow', mood, moodKey = '', modeKey = '', ground = 0;
 let cloudIndex = 0;
-let stormWait = 8, bolt = null;
+let stormWait = 8, bolt = null, previewBolt = null, lastPreview = -100;
 let beads = [];
 let falling = [], resting = [], motes = [], windows = [], cursor = { x: -1000, y: -1000 };
 const sounds = new window.Soundscape();
@@ -84,18 +84,27 @@ function spawnMote() {
     age: 0, duration: kind === 'gull' ? 24 : 30, rotation: 0, size: kind === 'gull' ? 92 : 10 + Math.random() * 13,
     tint: kind === 'leaf' ? '#d89a51' : kind === 'olive' ? '#b0c596' : art.rgba(mood.tint, .8) });
 }
+function makeBolt() {
+  let x = w*(.1+Math.random()*.8), y = 0;
+  const points = [[x,y]];
+  for(let i=0;i<6;i++){ x += (Math.random()-.5)*48; y += h*(.025+Math.random()*.025); points.push([x,y]); }
+  return {age:0,points};
+}
+api.onLightningPreview(() => {
+  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!state || state.settings.paused || !state.settings.lightning || reduced || time-lastPreview<3) return;
+  lastPreview=time; previewBolt=makeBolt();
+});
 function tick(dt) {
   const s = state.settings; time += dt;
+  if(previewBolt) { previewBolt.age+=dt; if(previewBolt.age>=.65 || !s.lightning) previewBolt=null; }
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (mode === 'storm' && s.lightning !== false && !reduced) {
     if (bolt) { bolt.age += dt; if (bolt.age >= .65) bolt = null; }
     stormWait -= dt;
     if (stormWait <= 0) {
       stormWait = 12 + Math.random()*12;
-      let x = w*(.1+Math.random()*.8), y = 0;
-      const points = [[x,y]];
-      for(let i=0;i<6;i++){ x += (Math.random()-.5)*48; y += h*(.025+Math.random()*.025); points.push([x,y]); }
-      bolt = {age:0,points};
+      bolt = makeBolt();
     }
   } else { bolt = null; stormWait = 8; }
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }
@@ -172,10 +181,12 @@ function draw() {
     ctx.globalAlpha=s.opacity*Math.min(1,(4-b.age)/1.5)*.6;
     ctx.fillStyle='#b0d0e5';ctx.beginPath();ctx.ellipse(b.x,b.y+slide*slide*10,b.size,1.3+slide,0,0,Math.PI*2);ctx.fill();
   }
-  if (bolt && !s.paused && s.lightning !== false) {
-    ctx.save(); ctx.globalAlpha = s.opacity*.45*Math.max(0,1-bolt.age/.65);
+  for (const flash of [bolt,previewBolt]) {
+  if (flash && !s.paused && s.lightning !== false) {
+    ctx.save(); ctx.globalAlpha = s.opacity*.45*Math.max(0,1-flash.age/.65);
     ctx.strokeStyle = '#c7d9ff'; ctx.lineWidth = 1.5; ctx.shadowColor = '#c7d9ff'; ctx.shadowBlur = 12;
-    ctx.beginPath(); bolt.points.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke(); ctx.restore();
+    ctx.beginPath(); flash.points.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke(); ctx.restore();
+  }
   }
   ctx.globalAlpha = 1;
 }

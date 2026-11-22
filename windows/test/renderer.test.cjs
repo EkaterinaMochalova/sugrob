@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const C = require('../app/core.js');
 function renderer() {
-  let environment, clear, preview;
+  let environment, clear, preview, lightningPreview;
   const drawing = new Proxy({}, { get(target, prop) {
     if (prop in target) return target[prop];
     if (String(prop).startsWith('create')) return () => ({ addColorStop() {} });
@@ -16,10 +16,10 @@ function renderer() {
   const context = { document: { getElementById: canvas, createElement: canvas }, innerWidth: 1920, innerHeight: 1080,
     Soundscape: class { sync() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
     devicePixelRatio: 1.5, addEventListener() {}, requestAnimationFrame() {}, console,
-    sugrob: { onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
+    sugrob: { onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
   for (const file of ['core.js', 'art.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
-  return { run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview() };
+  return { run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
 }
 test('Canvas renderer handles all portraits and weather modes with bounded particle counts', () => {
   const r = renderer();
@@ -163,4 +163,14 @@ test('Clouds stay small, subdued and varied along the top even at maximum size',
  assert.ok(r.run('falling.every(p=>p.y>=12 && p.y<=60 && p.size<96 && p.alpha<=.28)'));
  r.run('for(let i=0;i<2000;i++){tick(.05);draw()}');
  assert.ok(r.run('falling.length<=5 && falling.every(p=>p.y<=60)'));
+});
+
+test('Lightning button previews once in clear weather without switching source', () => {
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({enabled:true,city:C.cities[0]}),weather:{current:{weather_code:0,precipitation:0}}})})`);
+ r.lightningPreview(); assert.equal(r.run('previewBolt.points.length'),7); assert.equal(r.run('mode'),null);
+ r.run('tick(.1)'); r.lightningPreview(); assert.equal(r.run('previewBolt.age'),.1);
+ r.run('for(let i=0;i<15;i++)tick(.05)'); assert.equal(r.run('previewBolt'),null);
+ r.run('time+=3; state.settings.paused=true'); r.lightningPreview(); assert.equal(r.run('previewBolt'),null);
+ r.run('state.settings.paused=false; state.settings.lightning=false'); r.lightningPreview(); assert.equal(r.run('previewBolt'),null);
 });

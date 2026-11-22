@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-extension Notification.Name { static let previewAtmosphere = Notification.Name("SugrobPreviewAtmosphere") }
+extension Notification.Name { static let previewLightning = Notification.Name("SugrobPreviewLightning"); static let previewAtmosphere = Notification.Name("SugrobPreviewAtmosphere") }
 
 enum Mode: String, CaseIterable, Identifiable {
     case snow, leaves, rain, petals, clouds, storm

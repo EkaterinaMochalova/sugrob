@@ -10,8 +10,9 @@ body{height:100vh;overflow:hidden}.content{height:100vh;max-width:none;display:f
 
 :root{--paper:#f5f3e9;--sidebar:#e5eadd;--ink:#263b32}
 :root[data-theme=sand]{--paper:#faf3e9;--sidebar:#eedfcb;--ink:#594333}
-:root[data-theme=blue]{--paper:#eff4f8;--sidebar:#dbe7f0;--ink:#293f56}
-:root[data-theme=lavender]{--paper:#f5f0f8;--sidebar:#e8dff0;--ink:#493855}
+:root[data-theme=blue]{--paper:#eff2f1;--sidebar:#dde4e2;--ink:#394c48}
+:root[data-theme=rocks]{--paper:#e8e7e5;--sidebar:#cecdca;--ink:#383b40}
+:root[data-theme=clouds]{--paper:#f5f8fc;--sidebar:#e4ecf7;--ink:#344b66}
 :root,body{background:var(--paper);color:var(--ink)}aside{background:var(--sidebar)}
 h1,#hero-clock,#presets button,button,#live-card,#city-name,select{color:var(--ink)}
 button{background:var(--sidebar)}button:hover{filter:brightness(.97);background:var(--sidebar)}

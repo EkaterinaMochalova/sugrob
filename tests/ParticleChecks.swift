@@ -38,6 +38,15 @@ extension SnowScene {
         precondition(resting.isEmpty)
         setMode(.snow)
         precondition(falling.isEmpty)
+        if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            field.isHidden = true
+            previewLightning()
+            precondition(childNode(withName: "lightningPreview") != nil)
+            previewLightning()
+            precondition(children.filter { $0.name == "lightningPreview" }.count == 1)
+            hideLightning()
+            precondition(childNode(withName: "lightningPreview") == nil)
+        }
         print("PASS: snow, petals and leaves cross window edges; rain never settles")
     }
 }

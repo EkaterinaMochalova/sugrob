@@ -134,7 +134,7 @@ test('Weather label agrees with dry, wet and missing precipitation', () => {
 });
 
 test('Storm and palettes survive settings validation; dry weather stays clear', () => {
- for(const theme of ['sage','sand','blue','lavender']) assert.equal(C.normalize({theme,mode:'storm'}).theme,theme);
+ for(const theme of ['sage','sand','blue','rocks','clouds']) assert.equal(C.normalize({theme,mode:'storm'}).theme,theme);
  assert.equal(C.normalize({theme:'invalid'}).theme,'sage');
  assert.equal(C.normalize({mode:'storm',lightning:false}).lightning,false);
  for(const weather_code of [95,96,97,99]) {

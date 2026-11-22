@@ -154,6 +154,7 @@ else {
     ipcMain.handle('camera-layout', (e, key, bounds) => { authorized(e, true); if(key === null) inlineCamera?.clear(); else inlineCamera?.show(key,bounds); });
     ipcMain.handle('camera-reload', e => { authorized(e, true); inlineCamera?.reload(); });
     ipcMain.handle('refresh', e => { authorized(e, true); void weather.refresh(); });
+    ipcMain.handle('preview-lightning', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview-lightning'); });
     ipcMain.handle('preview', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview'); });
     ipcMain.handle('clear', e => { authorized(e, true); clear(); });
     ipcMain.handle('quit', e => { authorized(e, true); app.quit(); });
