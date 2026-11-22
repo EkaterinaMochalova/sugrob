@@ -21,10 +21,11 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <dict>
 	<key>CFBundleExecutable</key><string>Sugrob</string>
 	<key>CFBundleIdentifier</key><string>local.sugrob</string>
+	<key>CFBundleIconFile</key><string>Sugrob</string>
 	<key>CFBundleName</key><string>Sugrob</string>
 	<key>CFBundleDisplayName</key><string>Сугроб</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
-	<key>CFBundleShortVersionString</key><string>1.6.5</string>
+	<key>CFBundleShortVersionString</key><string>1.6.6</string>
 	<key>CFBundleVersion</key><string>1</string>
 	<key>LSMinimumSystemVersion</key><string>13.0</string>
 	<key>LSUIElement</key><true/>
@@ -34,6 +35,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 mkdir -p "$APP/Contents/Resources/AtmosphereAssets"
+cp app-icon/Sugrob.icns "$APP/Contents/Resources/"
 cp live-cameras.json "$APP/Contents/Resources/"
 cp assets/*.png assets/*.mp3 "$APP/Contents/Resources/AtmosphereAssets/"
 
