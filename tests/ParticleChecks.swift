@@ -4,7 +4,7 @@ extension SnowScene {
         let surface = Surface(x0: 0, top: 200, width: 1000, maxHeight: 16)
         windows = [1: surface]
         order = [(1, CGRect(x: 0, y: 0, width: 1000, height: 200))]
-        for kind in [Mode.snow, .rain] {
+        for kind in [Mode.snow, .rain, .petals, .leaves] {
             setMode(kind)
             falling = []
             resting = []
@@ -17,11 +17,11 @@ extension SnowScene {
                 field.addChild(f.node)
             }
             fall(0.05)
-            precondition(falling.count == (kind == .snow ? 1 : 2))
+            precondition(falling.count == (kind == .rain ? 2 : 1))
             precondition(falling.allSatisfy { $0.node.position.y < 200 })
-            precondition(resting.count == (kind == .snow ? 1 : 0))
+            precondition(resting.count == (kind == .rain ? 0 : 1))
         }
-        print("PASS: snow foreground and rain cross window edges; only background snow settles")
+        print("PASS: snow, petals and leaves cross window edges; rain never settles")
     }
 }
 SnowScene(screen: NSScreen.main!).checkWindowCrossing()

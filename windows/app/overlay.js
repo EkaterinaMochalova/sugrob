@@ -47,7 +47,7 @@ api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
   const kind = mode, scale = .6 + Math.random() * .9;
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
-    vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : 17) * scale * s.size,
+    vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,
     rotation: kind === 'rain' ? .04 : Math.random() * 6, phase: Math.random() * 6, alpha: kind === 'rain' ? .18 + Math.random() * .24 : .45 + Math.random() * .5,
     tint: kind === 'leaves' ? ['#d59746', '#b96d39', '#dec178'][Math.floor(Math.random() * 3)] : kind === 'petals' ? '#f4bacf' : kind === 'rain' ? '#b2c9dc' : '#f5f8ff' });
 }
@@ -97,7 +97,7 @@ function tick(dt) {
     const oldY = p.y;
     if (s.cursor && p.kind !== 'rain' && Math.hypot(p.x - cursor.x, p.y - cursor.y) < 65) p.vx += Math.sign(p.x - cursor.x) * 110 * dt;
     p.x += (p.vx + (p.kind === 'rain' ? -24 : Math.sin(time + p.phase) * 14)) * dt * s.speed;
-    p.y += p.vy * dt * s.speed; if (p.kind !== 'rain') p.rotation += dt * .35;
+    p.y += p.vy * dt * s.speed; if (p.kind !== 'rain') p.rotation += dt * (p.kind === 'leaves' ? .22 : .35);
     if (p.life !== undefined) { p.life -= dt; p.alpha = Math.min(p.alpha, Math.max(0, p.life / 3)); if (p.life <= 0) return false; }
     if (p.kind === 'rain') {
       const hit = C.landing(p.x, oldY, p.y, surfaces, floor);

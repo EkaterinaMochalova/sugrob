@@ -39,11 +39,14 @@ let flakeTexture = sprite(32, 32) { r in
     NSGradient(colorsAndLocations: (.white, 0), (.white, 0.45), (clear, 1))!
         .draw(in: NSBezierPath(ovalIn: r), relativeCenterPosition: .zero)
 }
-let leafTexture = sprite(40, 40) { r in
-    NSImage(systemSymbolName: "leaf.fill", accessibilityDescription: nil)?
-        .withSymbolConfiguration(.init(pointSize: 32, weight: .regular))?.draw(in: r)
-    NSColor.white.set()
-    r.fill(using: .sourceIn)
+let leafTexture = sprite(40, 54) { r in
+    NSColor(calibratedRed: 0.70, green: 0.46, blue: 0.20, alpha: 1).setFill()
+    NSBezierPath(ovalIn: r.insetBy(dx: 8, dy: 3)).fill()
+}
+let leafTextures: [SKTexture] = ["ochre", "rust", "olive"].compactMap { name in
+    guard let url = Bundle.main.url(forResource: "leaf-" + name, withExtension: "png", subdirectory: "AtmosphereAssets"),
+          let image = NSImage(contentsOf: url) else { return nil }
+    return SKTexture(image: image)
 }
 let petalTexture = sprite(16, 26) { r in
     NSColor.white.set()
@@ -76,8 +79,8 @@ func makeLook(_ mode: Mode) -> Look {
         return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0.35...0.95, rate: 45, fall: 90,
                     drag: 1.5, sway: 25, spin: 0, size: 1.5...4, bump: 0.5, settles: true, solidDrift: true)
     case .leaves:
-        return Look(texture: leafTexture, aspect: 1, colors: [.systemOrange, .systemRed, .systemYellow, .brown],
-                    alpha: 0.85...1, rate: 8, fall: 80, drag: 1.2, sway: 45, spin: 2, size: 14...24, bump: 0.15,
+        return Look(texture: leafTexture, aspect: 0.75, colors: [.white],
+                    alpha: 0.85...1, rate: 8, fall: 65, drag: 1.2, sway: 32, spin: 0.7, size: 22...38, bump: 0.15,
                     settles: true, solidDrift: false)
     case .rain:
         return Look(texture: dropTexture, aspect: 1.0 / 14, colors: [.white], alpha: 0.18...0.42, rate: 110, fall: 640,
@@ -285,9 +288,9 @@ final class SnowScene: SKScene {
         // Глубина: 0 — далеко (мелкая, тусклая, медленная), 1 — близко. Без неё снег выглядит плоской сеткой точек.
         let depth = CGFloat.random(in: 0...1)
         let h = (look.size.lowerBound + (look.size.upperBound - look.size.lowerBound) * depth) * sizeFactor
-        let node = SKSpriteNode(texture: look.texture, color: look.colors.randomElement()!,
+        let node = SKSpriteNode(texture: mode == .leaves ? (leafTextures.randomElement() ?? look.texture) : look.texture, color: look.colors.randomElement()!,
                                 size: CGSize(width: h * look.aspect, height: h))
-        node.colorBlendFactor = 1
+        node.colorBlendFactor = mode == .leaves ? 0 : 1
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
         if mode == .rain { node.zRotation = -0.04 }
@@ -313,6 +316,7 @@ final class SnowScene: SKScene {
             let np = CGPoint(x: p.x + (f.vx + sway + (mode == .rain ? -24 : 0)) * dt, y: p.y + f.vy * dt)
             f.node.position = np
             f.node.zRotation += f.spin * dt
+            if mode == .leaves { f.node.xScale = 0.35 + 0.65 * abs(sin(clock * 1.3 + f.phase)) }
 
             let out = np.y < -30 || np.x < -80 || np.x > size.width + 80 || np.y > size.height + 400
             if !out, mode == .rain, let s = landing(x: np.x, y: np.y, prevY: p.y), CGFloat.random(in: 0...1) < 0.12 {
