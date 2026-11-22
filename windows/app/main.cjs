@@ -6,6 +6,7 @@ const { spawn } = require('node:child_process');
 const { createInterface } = require('node:readline');
 const { pathToFileURL } = require('node:url');
 const core = require('./core.js');
+const { openCamera, cameras } = require('./live-camera.cjs');
 const { WeatherService } = require('./weather.cjs');
 let settings, settingsWindow, tray, helper, quitting = false, windows = [], foreground = null;
 let windowStatus = 'Определяем края окон…', persistenceError = null, settingsPath;
@@ -55,8 +56,8 @@ function secure(win) {
 function preferences() { return { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' }; }
 function showSettings() {
   if (settingsWindow && !settingsWindow.isDestroyed()) { settingsWindow.show(); settingsWindow.focus(); return; }
-  settingsWindow = new BrowserWindow({ title: 'Сугроб', width: 600, height: 810, minWidth: 490, minHeight: 500,
-    backgroundColor: '#171c25', autoHideMenuBar: true, show: false, icon: path.join(__dirname, 'icon.png'), webPreferences: preferences() });
+  settingsWindow = new BrowserWindow({ title: 'Сугроб', width: 980, height: 850, minWidth: 760, minHeight: 600,
+    backgroundColor: '#f5f3e9', autoHideMenuBar: true, show: false, icon: path.join(__dirname, 'icon.png'), webPreferences: preferences() });
   secure(settingsWindow);
   settingsWindow.loadFile(path.join(__dirname, 'settings.html'));
   settingsWindow.once('ready-to-show', () => { settingsWindow.show(); broadcast(); });
@@ -141,6 +142,8 @@ else {
       save(); weather.select(city); broadcast(); return snapshot();
     });
     ipcMain.handle('search', async (e, query) => { authorized(e, true); try { return { cities: await weather.search(query) }; } catch { return { error: 'Не удалось найти город. Проверьте интернет и повторите.' }; } });
+    ipcMain.handle('cameras', e => { authorized(e, true); return cameras; });
+    ipcMain.handle('open-camera', (e, id) => { authorized(e, true); return openCamera(id); });
     ipcMain.handle('refresh', e => { authorized(e, true); void weather.refresh(); });
     ipcMain.handle('preview', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview'); });
     ipcMain.handle('clear', e => { authorized(e, true); clear(); });

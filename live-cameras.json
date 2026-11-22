@@ -1,0 +1,50 @@
+[
+  {
+    "id": "florence",
+    "title": "Дуомо и крыши Флоренции",
+    "provider": "webcamfirenze",
+    "embed": "https://www.youtube.com/embed/qBtMuRnf7BY?autoplay=1&mute=1&playsinline=1",
+    "source": "https://webcamfirenze.altervista.org/",
+    "watch": "https://www.youtube.com/watch?v=qBtMuRnf7BY"
+  },
+  {
+    "id": "rome",
+    "title": "Площадь Святого Петра · Ватикан",
+    "provider": "Vatican News",
+    "embed": "https://www.youtube.com/embed/03pYP2Nmreo?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=03pYP2Nmreo",
+    "watch": "https://www.youtube.com/watch?v=03pYP2Nmreo"
+  },
+  {
+    "id": "tokyo",
+    "title": "Сибуя с высоты",
+    "provider": "iTSCOM",
+    "embed": "https://www.youtube.com/embed/f50R4vDlCmA?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=f50R4vDlCmA",
+    "watch": "https://www.youtube.com/watch?v=f50R4vDlCmA"
+  },
+  {
+    "id": "petersburg",
+    "title": "Панорама Петербурга",
+    "provider": "Saint Petersburg Live Camera",
+    "embed": "https://www.youtube.com/embed/hThVyUBeerA?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=hThVyUBeerA",
+    "watch": "https://www.youtube.com/watch?v=hThVyUBeerA"
+  },
+  {
+    "id": "athens",
+    "title": "Вид на Акрополь",
+    "provider": "SkylineWebcams / Hotel Grande Bretagne",
+    "embed": null,
+    "source": "https://www.skylinewebcams.com/en/webcam/ellada/atiki/athina/acropolis.html",
+    "watch": "https://www.skylinewebcams.com/en/webcam/ellada/atiki/athina/acropolis.html"
+  },
+  {
+    "id": "moscow",
+    "title": "Панорама Москвы",
+    "provider": "EarthCam / Moscow Today",
+    "embed": null,
+    "source": "https://www.earthcam.com/world/russia/moscow/?cam=moscow_hd",
+    "watch": "https://www.earthcam.com/world/russia/moscow/?cam=moscow_hd"
+  }
+]

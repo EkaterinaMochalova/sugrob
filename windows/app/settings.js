@@ -1,12 +1,12 @@
 'use strict';
 const api = window.sugrob, C = window.Sugrob, $ = id => document.getElementById(id);
-let state, searchToken = 0;
+let state, searchToken = 0, cameras = [];
 const seasonNames = { winter: 'Зима', spring: 'Весна', summer: 'Лето', autumn: 'Осень' };
 const lightNames = { day: 'День', night: 'Ночь', dawn: 'Рассвет', dusk: 'Вечер', whiteNight: 'Белая ночь' };
 function error(e) { $('error').textContent = 'Не удалось выполнить действие. Попробуйте ещё раз.'; console.error(e); }
 for (const city of C.cities.filter(city => ['moscow', 'rome', 'petersburg', 'tokyo', 'florence', 'athens'].includes(city.portrait))) {
   const button = document.createElement('button'); button.textContent = city.name; button.dataset.city = city.portrait;
-  button.onclick = () => api.select(city, true).catch(error); $('presets').append(button);
+  button.onclick = () => { showAdvanced(false); api.select(city, true).catch(error); }; $('presets').append(button);
 }
 for (const [key, value] of Object.entries(C.defaults)) {
   const input = $(key); if (!input || key === 'city') continue;
@@ -18,6 +18,7 @@ for (const [key, value] of Object.entries(C.defaults)) {
 function clock() {
   if (!state?.settings.city) { $('city-clock').textContent = ''; return; }
   const m = C.mood(state.settings.city);
+  $('hero-clock').textContent = `${m.time} · ${state.settings.city.country || ''} · ${seasonNames[m.season]}`;
   $('city-clock').textContent = `${m.time} · ${seasonNames[m.season]} · ${lightNames[m.light]}`;
 }
 function render(next) {
@@ -28,6 +29,15 @@ function render(next) {
   }
   $('city-name').textContent = s.city ? [s.city.name, s.city.admin1, s.city.country].filter(Boolean).join(', ') : 'Выбери город или оставь ручной эффект';
   const portrait = s.city && C.portrait(s.city);
+  $('hero-city').textContent = s.city?.name || 'Побудем где-нибудь ещё.';
+  const camera = cameras.find(c => c.id === portrait?.portrait);
+  $('live-card').hidden = !camera;
+  if (camera) {
+    $('camera-title').textContent = camera.title; $('camera-provider').textContent = camera.provider;
+    $('open-camera').textContent = camera.embed ? 'Открыть окно ↗' : 'Смотреть в браузере ↗';
+    $('open-camera').onclick = () => api.openCamera(camera.id).catch(error);
+    $('camera-note').textContent = camera.embed ? 'Настоящий свет и время города. Звук включается в плеере.' : 'Для этой камеры доступен просмотр на сайте владельца.';
+  }
   for (const button of $('presets').children) button.setAttribute('aria-pressed', String(button.dataset.city === portrait?.portrait));
   $('city-detail').textContent = s.city ? 'Погода выбранного города на рабочем столе.' : '';
   $('enabled').disabled = !s.city; $('atmosphere').disabled = !s.city;
@@ -65,3 +75,8 @@ $('refresh').onclick = () => api.refresh().catch(error);
 $('clear').onclick = () => api.clear().catch(error);
 $('quit').onclick = () => api.quit().catch(error);
 api.subscribe(render); api.state().then(render).catch(error); setInterval(clock, 60000);
+
+api.cameras().then(value => { cameras = value; if (state) render(state); }).catch(error);
+let advanced = false;
+function showAdvanced(value) { advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; }
+$('settings-tab').onclick = () => showAdvanced(!advanced);

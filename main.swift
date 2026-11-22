@@ -620,7 +620,6 @@ struct SettingsView: View {
                 }.disabled(weather.enabled)
                 Toggle("Пауза", isOn: $paused)
             }
-            WeatherSettingsView(weather: weather)
             Section("Вид") {
                 Slider(value: $intensity, in: 0.1...3) { Text("Количество") }
                 Slider(value: $speed, in: 0.3...2.5) { Text("Скорость") }
@@ -663,7 +662,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 620) // у сгруппированной формы нет своей высоты: без этого окно сжимается до заголовка
+        .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -673,6 +672,7 @@ struct SettingsView: View {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let weather = WeatherStore()
     let atmosphereSound = AtmosphereSound()
+    let liveCamera = LiveCameraController()
     var overlays: [Overlay] = []
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     var pauseItem: NSMenuItem!
@@ -705,6 +705,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         center.addObserver(forName: .previewAtmosphere, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.overlays.forEach { $0.scene.atmosphere.demonstrate() } }
+        }
+        center.addObserver(forName: .openLiveCamera, object: nil, queue: .main) { [weak self] note in
+            guard let camera = note.object as? LiveCamera else { return }
+            Task { @MainActor in self?.liveCamera.open(camera) }
         }
         weather.onChange = { [weak self] in self?.apply() }
         rebuildOverlays()
@@ -759,9 +763,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func showSettings() {
         if settingsWindow == nil {
-            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(weather: weather)))
+            let w = NSWindow(contentViewController: NSHostingController(rootView: DashboardView(weather: weather)))
             w.title = "Сугроб"
-            w.styleMask = [.titled, .closable, .miniaturizable]
+            w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            w.setContentSize(NSSize(width: 900, height: 760))
+            w.minSize = NSSize(width: 850, height: 680)
             w.isReleasedWhenClosed = false
             w.center()
             settingsWindow = w
