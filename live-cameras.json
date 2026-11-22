@@ -94,5 +94,13 @@
     "embed": "https://www.geocam.ru/js/player/playerjs.html?file=https://hls-spb03.timetechnology.ru:8080/2722/hls/fcdac098bed8c78a/live.m3u8&poster=/images/photo/fe/de/federation-tower-cam-3.webp",
     "source": "https://www.geocam.ru/online/federation-tower-cam/",
     "watch": "https://www.geocam.ru/online/federation-tower-cam/"
+  },
+  {
+    "id": "newyork",
+    "title": "Бруклинский мост · Ист-Ривер",
+    "provider": "EarthCam",
+    "embed": "https://www.youtube.com/embed/tErYxn2UM5Y?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.earthcam.com/usa/newyork/brooklynbridge/?cam=gzcchd",
+    "watch": "https://www.youtube.com/watch?v=tErYxn2UM5Y"
   }
 ]
