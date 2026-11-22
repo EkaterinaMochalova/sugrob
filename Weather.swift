@@ -4,10 +4,11 @@ import SwiftUI
 extension Notification.Name { static let previewAtmosphere = Notification.Name("SugrobPreviewAtmosphere") }
 
 enum Mode: String, CaseIterable, Identifiable {
-    case snow, leaves, rain, petals, clouds
+    case snow, leaves, rain, petals, clouds, storm
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .storm: return "Гроза"
         case .clouds: return "Облака"
         case .snow: return "Снег"
         case .leaves: return "Осенние листья"
@@ -43,7 +44,8 @@ struct CurrentWeather: Decodable {
     var codedEffect: Mode? {
         switch weather_code {
         case 71, 73, 75, 77, 85, 86: return .snow
-        case 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 97, 99: return .rain
+        case 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82: return .rain
+        case 95, 96, 97, 99: return .storm
         default: return nil
         }
     }
@@ -65,7 +67,7 @@ struct CurrentWeather: Decodable {
         case 51, 53, 55, 56, 57: return "Морось"
         case 61, 63, 65, 66, 67, 80, 81, 82: return "Дождь"
         case 71, 73, 75, 77, 85, 86: return "Снег"
-        case 95, 96, 97, 99: return "Гроза (на экране — дождь)"
+        case 95, 96, 97, 99: return "Гроза"
         default: return "Неизвестные условия — эффект выключен"
         }
     }

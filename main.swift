@@ -105,7 +105,7 @@ func makeLook(_ mode: Mode) -> Look {
         return Look(texture: leafTexture, aspect: 0.75, colors: [.white],
                     alpha: 0.85...1, rate: 8, fall: 65, drag: 1.2, sway: 32, spin: 0.7, size: 24...46, bump: 0.15,
                     settles: true, solidDrift: false)
-    case .rain:
+    case .rain, .storm:
         return Look(texture: dropTexture, aspect: 1.0 / 14, colors: [.white], alpha: 0.18...0.42, rate: 110, fall: 640,
                     drag: 8, sway: 0, spin: 0, size: 14...26, bump: 0, settles: false, solidDrift: false)
     case .petals:
@@ -231,6 +231,9 @@ final class SnowScene: SKScene {
     let atmosphere = AtmosphereNode()
     let field = SKNode() // все частицы; его прозрачность — настройка «Непрозрачность»
 
+    private var stormWait: CGFloat = 8
+    private var lightning: SKShapeNode?
+    private var lightningAge: CGFloat = 0
     private var mode: Mode?
     private var look = makeLook(.snow)
     private let origin: CGPoint
@@ -261,6 +264,7 @@ final class SnowScene: SKScene {
         guard newMode != mode else { return }
         let first = mode == nil
         mode = newMode
+        lightning?.removeFromParent(); lightning = nil; stormWait = 8
         look = makeLook(newMode)
         if !first {
             // Never let old snow/leaf sprites acquire the new rain physics.
@@ -278,11 +282,40 @@ final class SnowScene: SKScene {
         }
     }
 
+    func hideLightning() { lightning?.removeFromParent(); lightning = nil; stormWait = 8 }
+    private func updateLightning(_ dt: CGFloat) {
+        guard mode == .storm, snowing,
+              UserDefaults.standard.object(forKey: "lightning") as? Bool != false,
+              !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            lightning?.removeFromParent(); lightning = nil; stormWait = 8; return
+        }
+        if let bolt = lightning {
+            lightningAge += dt
+            bolt.alpha = max(0, 1 - lightningAge / 0.65) * 0.45
+            if lightningAge >= 0.65 { bolt.removeFromParent(); lightning = nil }
+        }
+        stormWait -= dt
+        guard stormWait <= 0 else { return }
+        stormWait = .random(in: 12...24)
+        let path = CGMutablePath()
+        var point = CGPoint(x: size.width * .random(in: 0.1...0.9), y: size.height)
+        path.move(to: point)
+        for _ in 0..<6 {
+            point.x += .random(in: -24...24); point.y -= size.height * .random(in: 0.025...0.05)
+            path.addLine(to: point)
+        }
+        let bolt = SKShapeNode(path: path)
+        bolt.strokeColor = NSColor(red: 0.78, green: 0.85, blue: 1, alpha: 1)
+        bolt.lineWidth = 1.5; bolt.glowWidth = 12; bolt.alpha = 0.45
+        field.addChild(bolt); lightning = bolt; lightningAge = 0
+    }
+
     override func update(_ currentTime: TimeInterval) {
         let raw = CGFloat(min(currentTime - lastTime, 0.05))
         lastTime = currentTime
         guard raw > 0, !isPaused else { return }
         atmosphere.tick(TimeInterval(raw))
+        updateLightning(raw)
         let dt = raw * speedFactor
         clock += dt
 
@@ -297,7 +330,7 @@ final class SnowScene: SKScene {
                 spawn()
             }
         }
-        if cursor && mode != .rain && mode != .clouds { pushByCursor(raw) } else { lastMouse = nil }
+        if cursor && mode != .rain && mode != .storm && mode != .clouds { pushByCursor(raw) } else { lastMouse = nil }
         fall(dt)
         updateBeads(dt)
         while resting.count > maxResting {
@@ -322,7 +355,7 @@ final class SnowScene: SKScene {
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
         if mode == .clouds { node.position = CGPoint(x: -h * look.aspect, y: size.height * .random(in: 0.43...0.82)) }
-        if mode == .rain { node.zRotation = -0.04 }
+        if (mode == .rain || mode == .storm) { node.zRotation = -0.04 }
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }
         field.addChild(node)
         let f = Flake(node: node)
@@ -349,13 +382,13 @@ final class SnowScene: SKScene {
             f.vx -= f.vx * k
             f.vy += (-look.fall * f.weight - f.vy) * k
             let sway = sin(clock * f.freq + f.phase) * look.sway * f.weight
-            let np = CGPoint(x: p.x + (f.vx + sway + (mode == .rain ? -24 : 0)) * dt, y: p.y + f.vy * dt)
+            let np = CGPoint(x: p.x + (f.vx + sway + ((mode == .rain || mode == .storm) ? -24 : 0)) * dt, y: p.y + f.vy * dt)
             f.node.position = np
             f.node.zRotation += f.spin * dt
             if mode == .leaves || mode == .petals { f.node.xScale = 0.35 + 0.65 * abs(sin(clock * 1.3 + f.phase)) }
 
             let out = np.y < -30 || np.x < -80 || np.x > size.width + 80 || np.y > size.height + 400
-            if !out, mode == .rain, let s = landing(x: np.x, y: np.y, prevY: p.y), CGFloat.random(in: 0...1) < 0.12 {
+            if !out, (mode == .rain || mode == .storm), let s = landing(x: np.x, y: np.y, prevY: p.y), CGFloat.random(in: 0...1) < 0.12 {
                 if let bead = beads.first(where: { $0.surface === s && abs($0.x - np.x) < 8 && $0.age < 1.5 }) {
                     bead.node.xScale = min(2, bead.node.xScale + 0.2)
                 } else if beads.count < 100 {
@@ -385,7 +418,7 @@ final class SnowScene: SKScene {
         beads.removeAll { bead in
             let s = bead.surface
             let valid = s === ground ? onGround : onWindows && windows.values.contains(where: { $0 === s })
-            guard mode == .rain, valid, s.visible[s.column(bead.x)], bead.age < 4 else {
+            guard (mode == .rain || mode == .storm), valid, s.visible[s.column(bead.x)], bead.age < 4 else {
                 bead.node.removeFromParent(); return true
             }
             bead.age += dt
@@ -633,6 +666,7 @@ final class Overlay {
         let effect = weather.enabled ? weather.current?.effect : (Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
         scene.setMode(effect ?? .snow)
         scene.field.isHidden = weather.enabled && effect == nil
+        if d.bool(forKey: "paused") || d.object(forKey: "lightning") as? Bool == false { scene.hideLightning() }
         scene.isPaused = d.bool(forKey: "paused")
         scene.snowing = !d.bool(forKey: "paused") && effect != nil
         scene.intensity = d.double(forKey: "intensity")
@@ -672,6 +706,8 @@ struct SettingsView: View {
     @AppStorage("hideInScreenshots") var hideInScreenshots = true
     @AppStorage("showInMenuBar") var showInMenuBar = true
     @AppStorage("showInDock") var showInDock = false
+    @AppStorage("appTheme") var theme = AppTheme.sage
+    @AppStorage("lightning") var lightning = true
     @State var openAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -685,6 +721,15 @@ struct SettingsView: View {
                     ForEach(Mode.allCases) { Text($0.title).tag($0) }
                 }.disabled(weather.enabled)
                 Toggle("Пауза", isOn: $paused)
+            }
+            Section("Оформление приложения") {
+                Picker("Цветовая гамма", selection: $theme) {
+                    ForEach(AppTheme.allCases) { Text($0.title).tag($0) }
+                }
+            }
+            Section("Гроза") {
+                Toggle("Вспышки молнии", isOn: $lightning)
+                Text("Редкие мягкие вспышки. При уменьшении движения в macOS молнии отключаются.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Вид") {
                 Slider(value: $intensity, in: 0.1...3) { Text("Количество") }
@@ -728,6 +773,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(theme.paper).tint(theme.ink).preferredColorScheme(.light)
         .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
     }
 }

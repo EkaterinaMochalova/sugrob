@@ -1,11 +1,32 @@
 import SwiftUI
 
-private let ink = Color(red: 0.15, green: 0.23, blue: 0.20)
-private let paper = Color(red: 0.96, green: 0.95, blue: 0.91)
+enum AppTheme: String, CaseIterable, Identifiable {
+    case sage, sand, blue, lavender
+    var id: String { rawValue }
+    var title: String { switch self {
+    case .sage: return "Шалфей"
+    case .sand: return "Песок"
+    case .blue: return "Голубая"
+    case .lavender: return "Лаванда"
+    } }
+    private var rgb: (UInt32, UInt32, UInt32) { switch self {
+    case .sage: return (0xF5F3E9, 0xE5EADD, 0x263B32)
+    case .sand: return (0xFAF3E9, 0xEEDFCB, 0x594333)
+    case .blue: return (0xEFF4F8, 0xDBE7F0, 0x293F56)
+    case .lavender: return (0xF5F0F8, 0xE8DFF0, 0x493855)
+    } }
+    private func color(_ n: UInt32) -> Color { Color(red: Double((n >> 16) & 255)/255, green: Double((n >> 8) & 255)/255, blue: Double(n & 255)/255) }
+    var paper: Color { color(rgb.0) }
+    var sidebar: Color { color(rgb.1) }
+    var ink: Color { color(rgb.2) }
+}
 private let destinations: [CityPortrait] = [.florence, .rome, .tokyo, .petersburg, .moscow, .athens, .nizhny, .newyork]
 
 struct DashboardView: View {
     @ObservedObject var weather: WeatherStore
+    @AppStorage("appTheme") private var theme = AppTheme.sage
+    private var ink: Color { theme.ink }
+    private var paper: Color { theme.paper }
     @State private var settings = false
     @State private var query = ""
     @State private var cameraChoice = ""
@@ -56,7 +77,7 @@ struct DashboardView: View {
                     Label(settings ? "Вернуться к городу" : "Эффекты и настройки", systemImage: settings ? "arrow.left" : "slider.horizontal.3")
                 }.buttonStyle(.plain).font(.system(size: 12))
                 Text("Немного ближе\nк другому месту.").font(.system(size: 13, design: .serif)).opacity(0.55).lineSpacing(4)
-            }.padding(24).frame(width: 230).background(Color(red: 0.90, green: 0.92, blue: 0.87))
+            }.padding(24).frame(width: 230).background(theme.sidebar)
             }
             if settings {
                 SettingsView(weather: weather).frame(maxWidth: .infinity, maxHeight: .infinity)

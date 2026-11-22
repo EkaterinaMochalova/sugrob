@@ -26,6 +26,7 @@ function clock() {
 }
 function render(next) {
   state = next; const s = next.settings;
+  document.documentElement.dataset.theme = s.theme || "sage";
   for (const key of Object.keys(C.defaults)) {
     const input = $(key); if (!input) continue;
     if (input.type === 'checkbox') input.checked = s[key]; else if (key !== 'city') input.value = String(s[key]);

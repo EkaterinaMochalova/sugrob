@@ -39,7 +39,11 @@ final class StubProtocol: URLProtocol {
         for code in [71, 73, 75, 77, 85, 86] {
             precondition(CurrentWeather(temperature_2m: -2, weather_code: code, precipitation: 0.1).effect == .snow)
         }
-        for code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 97, 99] {
+        for code in [95, 96, 97, 99] {
+            let storm = CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1)
+            precondition(storm.effect == .storm && storm.description == "Гроза")
+        }
+        for code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82] {
             precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1).effect == .rain)
         }
         for code in [0, 1, 45, 48, 999] {

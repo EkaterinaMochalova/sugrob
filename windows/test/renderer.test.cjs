@@ -137,3 +137,20 @@ test('Clouds drift horizontally, stay bounded, pause and disappear in clear weat
  r.run(`renderState(${JSON.stringify({settings:C.normalize({enabled:true,city:C.cities[0]}),weather:{current:{weather_code:0,precipitation:0}}})})`);
  assert.equal(r.run('falling.length'),0);
 });
+
+test('Storm produces rain and a brief bounded bolt, disables flashes and clears on mode change', () => {
+ const r = renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'storm'}),weather:{current:null}})})`);
+ r.run('stormWait=0; tick(.04); draw()');
+ assert.equal(r.run('bolt.points.length'),7);
+ assert.ok(r.run('falling.every(p=>p.kind==="rain")'));
+ r.run('for(let i=0;i<20;i++)tick(.04)');
+ assert.equal(r.run('bolt'),null);
+ assert.ok(r.run('stormWait>10'));
+ r.run('state.settings.lightning=false; stormWait=0; tick(.04)');
+ assert.equal(r.run('bolt'),null);
+ r.run('state.settings.lightning=true; stormWait=0; tick(.04); state.settings.paused=true; frame(1); frame(100)');
+ assert.equal(r.run('bolt.age'),0);
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'clouds'}),weather:{current:null}})})`);
+ assert.equal(r.run('bolt'),null);
+});

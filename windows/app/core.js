@@ -10,7 +10,7 @@
     { id: -7, name: 'Нижний Новгород', latitude: 56.33, longitude: 44.00, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'nizhny', detail: 'Тёплые отражения, ветка из-за края и дыхание воды.' },
     { id: -8, name: 'Нью-Йорк', latitude: 40.7128, longitude: -74.0060, country: 'США', timezone: 'America/New_York', portrait: 'newyork', detail: 'Погода и местное время Нью-Йорка.' }
   ];
-  const defaults = { enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
+  const defaults = { theme: 'sage', lightning: true, enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
     intensity: 1, speed: 1, size: 1, opacity: 0.85, strength: 0.65, sound: false, florenceBells: false, volume: 0.25, onGround: true, onWindows: true,
     cursor: true, drift: 1800, hideInScreenshots: false, overFullScreen: false, openAtLogin: false };
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
@@ -32,14 +32,16 @@
     for (const [key, min, max] of [['intensity', .1, 3], ['speed', .3, 2.5], ['size', .5, 2.5], ['opacity', .1, 1], ['strength', .15, 1], ['volume', 0, 1], ['drift', 300, 6000]]) {
       if (Number.isFinite(input[key])) s[key] = clamp(input[key], min, max);
     }
-    if (['snow', 'rain', 'leaves', 'petals', 'clouds'].includes(input.mode)) s.mode = input.mode;
+    if (['snow', 'rain', 'leaves', 'petals', 'clouds', 'storm'].includes(input.mode)) s.mode = input.mode;
+    if (['sage','sand','blue','lavender'].includes(input.theme)) s.theme = input.theme;
     s.city = validCity(input.city);
     if (!s.city) s.enabled = false;
     return s;
   }
   function effect(code) {
+    if ([95,96,97,99].includes(code)) return 'storm';
     if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 97, 99].includes(code)) return 'rain';
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain';
     return null;
   }
   function currentEffect(current) {
@@ -57,7 +59,7 @@
     if ([0, 1].includes(code)) return 'Ясно';
     if ([2, 3].includes(code)) return 'Облачно';
     if ([45, 48].includes(code)) return 'Туман';
-    if ([95, 96, 97, 99].includes(code)) return 'Гроза · на экране дождь';
+    if ([95, 96, 97, 99].includes(code)) return 'Гроза';
     if ([51, 53, 55, 56, 57].includes(code)) return 'Морось';
     return effect(code) === 'snow' ? 'Снег' : effect(code) === 'rain' ? 'Дождь' : 'Неизвестные условия';
   }

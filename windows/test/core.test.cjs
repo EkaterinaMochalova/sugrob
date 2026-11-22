@@ -21,7 +21,7 @@ test('Eight city portraits, winter/summer clocks and daylight-saving time', () =
 });
 test('Weather codes never invent precipitation; atmosphere works offline', () => {
   for (const code of [71,73,75,77,85,86]) assert.equal(C.effect(code), 'snow');
-  for (const code of [51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,97,99]) assert.equal(C.effect(code), 'rain');
+  for (const code of [51,53,55,56,57,61,63,65,66,67,80,81,82]) assert.equal(C.effect(code), 'rain');
   for (const code of [0,1,2,3,45,48,999,null,undefined]) assert.equal(C.effect(code), null);
   assert.equal(C.mood(C.cities[0]).precipitation, false);
   assert.equal(C.mood(C.cities[0], new Date(), 71).precipitation, true);
@@ -131,4 +131,15 @@ test('Weather label agrees with dry, wet and missing precipitation', () => {
  }
  assert.equal(C.currentDescription({weather_code:61,precipitation:0.1}),'Дождь');
  assert.equal(C.currentDescription({weather_code:0,precipitation:0}),'Ясно');
+});
+
+test('Storm and palettes survive settings validation; dry weather stays clear', () => {
+ for(const theme of ['sage','sand','blue','lavender']) assert.equal(C.normalize({theme,mode:'storm'}).theme,theme);
+ assert.equal(C.normalize({theme:'invalid'}).theme,'sage');
+ assert.equal(C.normalize({mode:'storm',lightning:false}).lightning,false);
+ for(const weather_code of [95,96,97,99]) {
+  assert.equal(C.currentEffect({weather_code,precipitation:.2}),'storm');
+  assert.equal(C.currentDescription({weather_code,precipitation:.2}),'Гроза');
+  assert.equal(C.currentEffect({weather_code,precipitation:0}),null);
+ }
 });

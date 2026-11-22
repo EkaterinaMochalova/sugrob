@@ -3,6 +3,7 @@ const C = window.Sugrob, art = window.SugrobArt, api = window.sugrob;
 const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
 const background = document.createElement('canvas'), bg = background.getContext('2d');
 let w = 1, h = 1, dpr = 1, state, mode = 'snow', mood, moodKey = '', modeKey = '', ground = 0;
+let stormWait = 8, bolt = null;
 let beads = [];
 let falling = [], resting = [], motes = [], windows = [], cursor = { x: -1000, y: -1000 };
 const sounds = new window.Soundscape();
@@ -25,7 +26,7 @@ function renderState(next) {
   state = next; const s = state.settings;
   mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
   const key = String(mode);
-  if (key !== modeKey) { beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<4;i++){spawn(s);falling[falling.length-1].x=w*i/3;} }
+  if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<4;i++){spawn(s);falling[falling.length-1].x=w*i/3;} }
   updateMood();
   sounds.sync(next.audioLeader && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
 }
@@ -46,7 +47,7 @@ api.onClear(() => { beads = []; for (const p of resting) release(p); resting = [
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
   if (mode === 'clouds') { falling.push({kind:'clouds',x:-300,y:h*(.18+Math.random()*.39),vx:7+Math.random()*5,size:(105+Math.random()*60)*s.size,rotation:0,alpha:.55+Math.random()*.17,tint:'#eeeeee'}); return; }
-  const kind = mode, scale = .6 + Math.random() * .9;
+  const kind = mode === 'storm' ? 'rain' : mode, scale = .6 + Math.random() * .9;
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,
     rotation: kind === 'rain' ? .04 : Math.random() * 6, phase: Math.random() * 6, alpha: kind === 'rain' ? .18 + Math.random() * .24 : .45 + Math.random() * .5,
@@ -84,9 +85,21 @@ function spawnMote() {
 }
 function tick(dt) {
   const s = state.settings; time += dt;
+  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (mode === 'storm' && s.lightning !== false && !reduced) {
+    if (bolt) { bolt.age += dt; if (bolt.age >= .65) bolt = null; }
+    stormWait -= dt;
+    if (stormWait <= 0) {
+      stormWait = 12 + Math.random()*12;
+      let x = w*(.1+Math.random()*.8), y = 0;
+      const points = [[x,y]];
+      for(let i=0;i<6;i++){ x += (Math.random()-.5)*48; y += h*(.025+Math.random()*.025); points.push([x,y]); }
+      bolt = {age:0,points};
+    }
+  } else { bolt = null; stormWait = 8; }
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }
   if (mode) {
-    spawnDebt += dt * (mode === 'clouds' ? .025 : mode === 'rain' ? 110 : 42) * s.intensity * w / 1440;
+    spawnDebt += dt * (mode === 'clouds' ? .025 : (mode === 'rain' || mode === 'storm') ? 110 : 42) * s.intensity * w / 1440;
     while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 8 : 900)) { spawn(s); spawnDebt--; }
     spawnDebt = Math.min(spawnDebt, 4);
   }
@@ -128,7 +141,7 @@ function tick(dt) {
   beads = beads.filter(b => {
     b.age += dt;
     const current = b.surface.id === 'ground' ? (s.onGround ? {y:floor,x:0,width:w}:null) : surfaces.find(x=>x.id===b.surface.id);
-    return mode==='rain' && b.age<4 && current && current.y===b.surface.y && (b.surface.id==='ground' || current.x===b.surface.x);
+    return (mode==='rain' || mode==='storm') && b.age<4 && current && current.y===b.surface.y && (b.surface.id==='ground' || current.x===b.surface.x);
   });
   if (resting.length > s.drift) resting.splice(0, resting.length - s.drift);
   if (mood) { eventWait -= dt; if(eventWait <= 0) { showEvent(); eventWait = 32 + Math.random()*16; } }
@@ -157,6 +170,11 @@ function draw() {
     const slide=Math.max(0,b.age-1.5);
     ctx.globalAlpha=s.opacity*Math.min(1,(4-b.age)/1.5)*.6;
     ctx.fillStyle='#b0d0e5';ctx.beginPath();ctx.ellipse(b.x,b.y+slide*slide*10,b.size,1.3+slide,0,0,Math.PI*2);ctx.fill();
+  }
+  if (bolt && !s.paused && s.lightning !== false) {
+    ctx.save(); ctx.globalAlpha = s.opacity*.45*Math.max(0,1-bolt.age/.65);
+    ctx.strokeStyle = '#c7d9ff'; ctx.lineWidth = 1.5; ctx.shadowColor = '#c7d9ff'; ctx.shadowBlur = 12;
+    ctx.beginPath(); bolt.points.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke(); ctx.restore();
   }
   ctx.globalAlpha = 1;
 }
