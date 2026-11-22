@@ -86,5 +86,21 @@
     "embed": "https://www.youtube.com/embed/ZxCeWQ3Lcig?autoplay=1&mute=1&playsinline=1",
     "source": "https://www.youtube.com/watch?v=ZxCeWQ3Lcig",
     "watch": "https://www.youtube.com/watch?v=ZxCeWQ3Lcig"
+  },
+  {
+    "id": "florence",
+    "title": "Понте-Веккьо · Лунгарно и Арно",
+    "provider": "SkylineWebcams",
+    "embed": "https://www.skylinewebcams.com/en/webcam/italia/toscana/firenze/ponte-vecchio-lungarno.html",
+    "source": "https://www.skylinewebcams.com/en/webcam/italia/toscana/firenze/ponte-vecchio-lungarno.html",
+    "watch": "https://www.skylinewebcams.com/en/webcam/italia/toscana/firenze/ponte-vecchio-lungarno.html"
+  },
+  {
+    "id": "rome",
+    "title": "Площадь Навона · фонтаны и площадь",
+    "provider": "SkylineWebcams / Navona49",
+    "embed": "https://www.skylinewebcams.com/en/webcam/italia/lazio/roma/piazza-navona-roma.html",
+    "source": "https://www.skylinewebcams.com/en/webcam/italia/lazio/roma/piazza-navona-roma.html",
+    "watch": "https://www.skylinewebcams.com/en/webcam/italia/lazio/roma/piazza-navona-roma.html"
   }
 ]

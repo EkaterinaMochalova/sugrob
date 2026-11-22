@@ -8,6 +8,10 @@ test('Desktop platforms share the camera catalog and official player URLs', () =
  for(const c of cameras) {
   assert.equal(new URL(c.watch).protocol,'https:');
   if(c.id === 'moscow') {assert.equal(c.embed, 'https://bolotnaya.online/ru/cameras/ul-serafimovicha/'); assert.equal(c.source,c.embed);}
+  else if(c.provider.startsWith('SkylineWebcams')) {assert.ok([
+   'https://www.skylinewebcams.com/en/webcam/italia/toscana/firenze/ponte-vecchio-lungarno.html',
+   'https://www.skylinewebcams.com/en/webcam/italia/lazio/roma/piazza-navona-roma.html'
+  ].includes(c.embed)); assert.equal(c.source,c.embed);}
   else if(c.embed) {assert.equal(new URL(c.embed).hostname,'www.youtube.com'); assert.match(new URL(c.embed).pathname,/^\/embed\/[\w-]{11}$/);}
  }
 });
