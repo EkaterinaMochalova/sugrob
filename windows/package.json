@@ -1,7 +1,7 @@
 {
   "name": "sugrob-windows",
   "productName": "Sugrob",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "private": true,
   "description": "Погода и атмосфера другого города на рабочем столе",
   "main": "app/main.cjs",

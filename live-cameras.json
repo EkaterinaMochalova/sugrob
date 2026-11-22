@@ -86,5 +86,13 @@
     "embed": "https://www.geocam.ru/js/player/playerjs.html?file=https://rtsp2.videocam.online/live/iCity.stream/playlist.m3u8&poster=/images/photo/ic/it/icity.webp",
     "source": "https://www.geocam.ru/online/icity/",
     "watch": "https://www.geocam.ru/online/icity/"
+  },
+  {
+    "id": "moscow",
+    "title": "Башня Восток · вид с 87-го этажа",
+    "provider": "GEOCAM / TimeTechnology",
+    "embed": "https://www.geocam.ru/js/player/playerjs.html?file=https://hls-spb03.timetechnology.ru:8080/2722/hls/fcdac098bed8c78a/live.m3u8&poster=/images/photo/fe/de/federation-tower-cam-3.webp",
+    "source": "https://www.geocam.ru/online/federation-tower-cam/",
+    "watch": "https://www.geocam.ru/online/federation-tower-cam/"
   }
 ]
