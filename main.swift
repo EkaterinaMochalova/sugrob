@@ -105,6 +105,7 @@ final class Flake {
     var surface: Surface? // на чём лежит; nil — падает
     var column = 0
     var bump: CGFloat = 0
+    var collectsOnWindows = CGFloat.random(in: 0..<1) < 0.15
     init(node: SKSpriteNode) { self.node = node }
 }
 
@@ -326,7 +327,8 @@ final class SnowScene: SKScene {
             var gone = out
             if out {
                 f.node.removeFromParent()
-            } else if look.settles, f.vy < 0, let s = landing(x: np.x, y: np.y, prevY: p.y) {
+            } else if look.settles, f.vy < 0, let s = landing(x: np.x, y: np.y, prevY: p.y), s === ground || f.collectsOnWindows {
+                // Most particles pass in front; only a small background layer settles.
                 // Rain passes over windows and exits below the screen.
                 gone = settle(f, on: s)
             }
@@ -389,6 +391,7 @@ final class SnowScene: SKScene {
             c += goLeft ? -1 : 1
         }
         if s.heights[c] >= s.maxHeight {
+            if s !== ground { return false }
             f.node.removeFromParent()
             return true
         }

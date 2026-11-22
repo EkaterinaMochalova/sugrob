@@ -103,3 +103,13 @@ test('Animation advances on every display frame, including 120 Hz', () => {
  const r=renderer();r.run(`renderState(${JSON.stringify({settings:C.normalize(),weather:{current:null}})})`);r.run('frame(1000)');const before=r.run('time');
  r.run('frame(1000+1000/120)');assert.ok(r.run('time')>before);
 });
+
+test('Foreground snow crosses window edges while background snow collects', () => {
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'snow',cursor:false}),weather:{current:null}})})`);
+ r.environment({cursor:{x:-100,y:-100},ground:900,windows:[{id:'a',x:0,y:200,width:1920,height:700}]});
+ r.run("falling=[false,true].map(collectsOnWindows=>({kind:'snow',collectsOnWindows,x:600,y:199,vx:0,vy:80,phase:0,alpha:1,rotation:0}));state.settings.intensity=0;tick(.04)");
+ assert.equal(r.run('falling.length'),1);
+ assert.ok(r.run('falling[0].y')>200);
+ assert.equal(r.run('resting.length'),1);
+});

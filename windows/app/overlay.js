@@ -46,7 +46,7 @@ api.onClear(() => { beads = []; for (const p of resting) release(p); resting = [
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
   const kind = mode, scale = .6 + Math.random() * .9;
-  falling.push({ kind, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
+  falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : 17) * scale * s.size,
     rotation: kind === 'rain' ? .04 : Math.random() * 6, phase: Math.random() * 6, alpha: kind === 'rain' ? .18 + Math.random() * .24 : .45 + Math.random() * .5,
     tint: kind === 'leaves' ? ['#d59746', '#b96d39', '#dec178'][Math.floor(Math.random() * 3)] : kind === 'petals' ? '#f4bacf' : kind === 'rain' ? '#b2c9dc' : '#f5f8ff' });
@@ -108,9 +108,10 @@ function tick(dt) {
       }
     }
     const surface = p.kind !== 'rain' && p.life === undefined ? C.landing(p.x, oldY, p.y, surfaces, floor) : null;
-    if (surface) {
+    if (surface && (surface.id === 'ground' || p.collectsOnWindows)) {
       if (p.kind !== 'rain') {
         const key = `${surface.id}:${Math.floor(p.x / 9)}`;
+        if (surface.id !== 'ground' && (piles.get(key) || 0) >= 10) return true;
         const depth = Math.min(24, (piles.get(key) || 0) * 1.6); piles.set(key, (piles.get(key) || 0) + 1);
         p.y = surface.y - depth; p.surface = surface.id; resting.push(p);
       }
