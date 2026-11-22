@@ -85,10 +85,32 @@ function spawnMote() {
     tint: kind === 'leaf' ? '#d89a51' : kind === 'olive' ? '#b0c596' : art.rgba(mood.tint, .8) });
 }
 function makeBolt() {
-  let x = w*(.1+Math.random()*.8), y = 0;
-  const points = [[x,y]];
-  for(let i=0;i<6;i++){ x += (Math.random()-.5)*48; y += h*(.025+Math.random()*.025); points.push([x,y]); }
-  return {age:0,points};
+  function channel(start,end,spread,levels) {
+    let points=[start,end];
+    for(let level=0;level<levels;level++) {
+      const next=[points[0]];
+      for(let i=1;i<points.length;i++) {
+        const a=points[i-1],b=points[i];
+        next.push([Math.max(4,Math.min(w-4,(a[0]+b[0])/2+(Math.random()*2-1)*spread)),(a[1]+b[1])/2],b);
+      }
+      points=next;spread*=.52;
+    }
+    return points;
+  }
+  const start=[w*(.35+Math.random()*.3),0];
+  const end=[Math.max(w*.15,Math.min(w*.85,start[0]+w*(Math.random()*.4-.2))),h*.98];
+  const points=channel(start,end,w*.09,6),branches=[];
+  for(let i=8;i<=48;i+=5) {
+    const origin=points[i], side=i%2===0?-1:1;
+    const tip=[Math.max(8,Math.min(w-8,origin[0]+side*w*(.12+Math.random()*.23))),Math.min(h-8,origin[1]+h*(.12+Math.random()*.26))];
+    const branch=channel(origin,tip,w*.035,4);
+    branches.push({points:branch,width:.9,glow:3,alpha:.62});
+    for(const j of [5,10]) {
+      const twigEnd=[Math.max(4,Math.min(w-4,branch[j][0]+side*w*(.04+Math.random()*.08))),Math.min(h-4,branch[j][1]+h*(.04+Math.random()*.09))];
+      branches.push({points:channel(branch[j],twigEnd,w*.012,3),width:.45,glow:1,alpha:.38});
+    }
+  }
+  return {age:0,points,branches};
 }
 api.onLightningPreview(() => {
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -183,9 +205,13 @@ function draw() {
   }
   for (const flash of [bolt,previewBolt]) {
   if (flash && !s.paused && s.lightning !== false) {
-    ctx.save(); ctx.globalAlpha = s.opacity*.45*Math.max(0,1-flash.age/.65);
-    ctx.strokeStyle = '#f7f7f7'; ctx.lineWidth = 1.5; ctx.shadowColor = '#f7f7f7'; ctx.shadowBlur = 12;
-    ctx.beginPath(); flash.points.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke(); ctx.restore();
+    ctx.save();
+    for(const part of [{points:flash.points,width:2.4,glow:9,alpha:1},...flash.branches]) {
+      ctx.globalAlpha=s.opacity*.9*Math.exp(-flash.age*7)*part.alpha;
+      ctx.strokeStyle='#ffffff';ctx.lineWidth=part.width;ctx.lineJoin='round';ctx.lineCap='round';ctx.shadowColor='#ffffff';ctx.shadowBlur=part.glow;
+      ctx.beginPath();part.points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke();
+    }
+    ctx.restore();
   }
   }
   ctx.globalAlpha = 1;

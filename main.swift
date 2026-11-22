@@ -298,7 +298,7 @@ final class SnowScene: SKScene {
         }
         if let bolt = lightning {
             lightningAge += dt
-            bolt.alpha = max(0, 1 - lightningAge / 0.65) * 0.45
+            bolt.alpha = exp(-lightningAge * 7) * 0.9
             if lightningAge >= 0.65 { bolt.removeFromParent(); lightning = nil }
         }
         stormWait -= dt
@@ -308,16 +308,48 @@ final class SnowScene: SKScene {
         field.addChild(bolt); lightning = bolt; lightningAge = 0
     }
     private func makeLightning() -> SKShapeNode {
-        let path = CGMutablePath()
-        var point = CGPoint(x: size.width * .random(in: 0.1...0.9), y: size.height)
-        path.move(to: point)
-        for _ in 0..<6 {
-            point.x += .random(in: -24...24); point.y -= size.height * .random(in: 0.025...0.05)
-            path.addLine(to: point)
+        // Midpoint displacement gives branching channels, rather than a regular zigzag.
+        func channel(_ start: CGPoint, _ end: CGPoint, _ spread: CGFloat, _ levels: Int) -> [CGPoint] {
+            var points = [start, end]
+            var amplitude = spread
+            for _ in 0..<levels {
+                var next: [CGPoint] = [points[0]]
+                for i in 1..<points.count {
+                    let a = points[i - 1], b = points[i]
+                    next.append(CGPoint(x: min(size.width - 4, max(4, (a.x + b.x) / 2 + .random(in: -amplitude...amplitude))),
+                                        y: (a.y + b.y) / 2))
+                    next.append(b)
+                }
+                points = next; amplitude *= 0.52
+            }
+            return points
         }
-        let bolt = SKShapeNode(path: path)
-        bolt.strokeColor = NSColor(white: 0.97, alpha: 1)
-        bolt.lineWidth = 1.5; bolt.glowWidth = 12; bolt.alpha = 0.45
+        func stroke(_ points: [CGPoint], _ width: CGFloat, _ glow: CGFloat) -> SKShapeNode {
+            let path = CGMutablePath(); path.move(to: points[0])
+            points.dropFirst().forEach { path.addLine(to: $0) }
+            let node = SKShapeNode(path: path)
+            node.strokeColor = .white; node.lineWidth = width; node.glowWidth = glow
+            return node
+        }
+        let start = CGPoint(x: size.width * .random(in: 0.35...0.65), y: size.height)
+        let end = CGPoint(x: min(size.width * 0.85, max(size.width * 0.15, start.x + size.width * .random(in: -0.2...0.2))), y: size.height * 0.02)
+        let trunk = channel(start, end, size.width * 0.09, 6)
+        let bolt = stroke(trunk, 2.4, 9)
+        bolt.alpha = 0.9
+        for i in stride(from: 8, through: 48, by: 5) {
+            let origin = trunk[i]
+            let side: CGFloat = i % 2 == 0 ? -1 : 1
+            let tip = CGPoint(x: min(size.width - 8, max(8, origin.x + side * size.width * .random(in: 0.12...0.35))),
+                              y: max(8, origin.y - size.height * .random(in: 0.12...0.38)))
+            let branch = channel(origin, tip, size.width * 0.035, 4)
+            let node = stroke(branch, 0.9, 3); node.alpha = 0.62; bolt.addChild(node)
+            for j in [5, 10] {
+                let twigEnd = CGPoint(x: min(size.width - 4, max(4, branch[j].x + side * size.width * .random(in: 0.04...0.12))),
+                                      y: max(4, branch[j].y - size.height * .random(in: 0.04...0.13)))
+                let twig = stroke(channel(branch[j], twigEnd, size.width * 0.012, 3), 0.45, 1)
+                twig.alpha = 0.38; bolt.addChild(twig)
+            }
+        }
         return bolt
     }
     func previewLightning() {
@@ -329,7 +361,7 @@ final class SnowScene: SKScene {
         let bolt = makeLightning()
         bolt.name = "lightningPreview"
         addChild(bolt)
-        bolt.run(.sequence([.fadeOut(withDuration: 0.65), .removeFromParent()]))
+        bolt.run(.sequence([.customAction(withDuration: 0.65) { node, time in node.alpha = exp(-time * 7) * 0.9 }, .removeFromParent()]))
     }
 
     override func update(_ currentTime: TimeInterval) {

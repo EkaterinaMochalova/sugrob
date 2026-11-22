@@ -142,7 +142,7 @@ test('Storm produces rain and a brief bounded bolt, disables flashes and clears 
  const r = renderer();
  r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'storm'}),weather:{current:null}})})`);
  r.run('stormWait=0; tick(.04); draw()');
- assert.equal(r.run('bolt.points.length'),7);
+ assert.equal(r.run('bolt.points.length'),65);
  assert.ok(r.run('falling.every(p=>p.kind==="rain")'));
  r.run('for(let i=0;i<20;i++)tick(.04)');
  assert.equal(r.run('bolt'),null);
@@ -168,9 +168,19 @@ test('Clouds fill the upper band without reaching screen center at maximum size'
 test('Lightning button previews once in clear weather without switching source', () => {
  const r=renderer();
  r.run(`renderState(${JSON.stringify({settings:C.normalize({enabled:true,city:C.cities[0]}),weather:{current:{weather_code:0,precipitation:0}}})})`);
- r.lightningPreview(); assert.equal(r.run('previewBolt.points.length'),7); assert.equal(r.run('mode'),null);
+ r.lightningPreview(); assert.equal(r.run('previewBolt.points.length'),65); assert.equal(r.run('mode'),null);
  r.run('tick(.1)'); r.lightningPreview(); assert.equal(r.run('previewBolt.age'),.1);
  r.run('for(let i=0;i<15;i++)tick(.05)'); assert.equal(r.run('previewBolt'),null);
  r.run('time+=3; state.settings.paused=true'); r.lightningPreview(); assert.equal(r.run('previewBolt'),null);
  r.run('state.settings.paused=false; state.settings.lightning=false'); r.lightningPreview(); assert.equal(r.run('previewBolt'),null);
+});
+
+test('Lightning spans screen height with fine branches and bounded geometry',()=>{
+ const r=renderer();
+ for(let i=0;i<100;i++) {
+  r.run('bolt=makeBolt()');
+  assert.ok(r.run('bolt.points[0][1]===0 && bolt.points.at(-1)[1]>=h*.95'));
+  assert.equal(r.run('bolt.branches.length'),27);
+  assert.ok(r.run('[bolt.points,...bolt.branches.map(b=>b.points)].flat().every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)&&x>=0&&x<=w&&y>=0&&y<=h)'));
+ }
 });

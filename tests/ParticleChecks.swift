@@ -23,6 +23,9 @@ extension SnowScene {
         }
         setMode(.storm)
         if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            let sample = makeLightning()
+            precondition(sample.path!.boundingBox.height >= size.height * 0.95)
+            precondition(sample.children.count == 27)
             stormWait = 0
             updateLightning(0.05)
             precondition(lightning != nil)
