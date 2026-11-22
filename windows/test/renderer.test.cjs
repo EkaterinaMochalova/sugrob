@@ -94,7 +94,7 @@ test('Rain stays aligned and switching source preserves the same rain particles'
  assert.ok(r.run('falling.length')>0);
  assert.ok(r.run('falling.every(p=>p.rotation===.04 && p.vx===0)'));
  const before=r.run('JSON.stringify(falling)');
- r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'rain',enabled:true,city,cursor:false}),weather:{current:{weather_code:61}}})})`);
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'rain',enabled:true,city,cursor:false}),weather:{current:{weather_code:61,precipitation:0.1}}})})`);
  assert.equal(r.run('JSON.stringify(falling)'),before);
  r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'snow'}),weather:{current:null}})})`);
  assert.equal(r.run('falling.length'),0);

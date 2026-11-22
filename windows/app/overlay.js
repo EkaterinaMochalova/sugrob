@@ -23,7 +23,7 @@ function updateMood() {
 }
 function renderState(next) {
   state = next; const s = state.settings;
-  mode = s.enabled ? C.effect(next.weather.current?.weather_code) : s.mode;
+  mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
   const key = String(mode);
   if (key !== modeKey) { beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; }
   updateMood();

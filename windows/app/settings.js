@@ -68,7 +68,7 @@ function render(next) {
   $('volume').disabled = !s.sound;
   $('refresh').disabled = !s.enabled || next.weather.loading;
   const w = next.weather;
-  $('weather').textContent = !s.enabled ? 'Ручной эффект включён.' : w.error || (w.current ? `${C.description(w.current.weather_code)}, ${Math.round(w.current.temperature_2m)} °C · обновлено ${new Date(w.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${w.loading ? ' · обновляем…' : ''}` : 'Загружаем погоду…');
+  $('weather').textContent = !s.enabled ? 'Ручной эффект включён.' : w.error || (w.current ? `${s.city?.id === -2 ? "Район Ватикана · " : ""}${C.description(w.current.weather_code)}, ${Math.round(w.current.temperature_2m)} °C · обновлено ${new Date(w.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${w.loading ? ' · обновляем…' : ''}` : 'Загружаем погоду…');
   $('window-status').textContent = next.windowStatus;
   $('error').textContent = next.persistenceError || '';
   clock(); syncCamera();

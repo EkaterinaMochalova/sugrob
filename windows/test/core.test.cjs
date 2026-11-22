@@ -102,3 +102,24 @@ test('New York observes US daylight saving; Nizhny stays on Moscow time and both
  assert.equal(C.mood(nn,new Date('2026-07-15T12:00:00Z')).time,'15:00');
  assert.equal(C.mood(ny).soundAsset,null); assert.equal(C.mood(nn).soundAsset,null);
 });
+
+test('City effects require positive measured precipitation', () => {
+ const C = require('../app/core.js');
+ assert.equal(C.currentEffect({weather_code:80,precipitation:0}),null);
+ assert.equal(C.currentEffect({weather_code:80}),null);
+ assert.equal(C.currentEffect({weather_code:80,precipitation:0.1}),'rain');
+ assert.equal(C.currentEffect({weather_code:71,precipitation:0.1}),'snow');
+});
+
+test('Saved Rome coordinates request the Vatican district and precipitation', async () => {
+ const service = new WeatherService(()=>{},async u=>{
+  assert.equal(u.searchParams.get('latitude'),'41.9022');
+  assert.equal(u.searchParams.get('longitude'),'12.4573');
+  assert.ok(u.searchParams.get('current').includes('precipitation'));
+  return {current:{temperature_2m:18,weather_code:80,precipitation:0}};
+ });
+ service.city={id:-2,latitude:41.90,longitude:12.50};
+ await service.refresh();
+ assert.equal(C.currentEffect(service.state.current),null);
+ service.close();
+});

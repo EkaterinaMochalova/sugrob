@@ -177,6 +177,7 @@ struct DashboardView: View {
                 Spacer()
                 Text(weather.enabled ? "АВТО" : "ВЫКЛ").font(.system(size: 10, weight: .semibold))
             }
+            Text(city.id == -2 ? "Open-Meteo · район Ватикана" : "Open-Meteo · погода в районе города").font(.caption).foregroundStyle(.secondary)
             if let current = weather.current {
                 Text("\(Int(current.temperature_2m.rounded()))° · \(current.description)").font(.system(size: 22, weight: .light))
                 if current.effect == nil { Text("Сейчас без осадков — экран остаётся чистым.").font(.caption).foregroundStyle(.secondary) }

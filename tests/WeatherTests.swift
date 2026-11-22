@@ -25,14 +25,16 @@ final class StubProtocol: URLProtocol {
 
     @MainActor static func main() async throws {
         try checkAtmosphere()
+        precondition(CurrentWeather(temperature_2m: 18, weather_code: 80, precipitation: 0).effect == nil)
+        precondition(CurrentWeather(temperature_2m: 18, weather_code: 80).effect == nil)
         for code in [71, 73, 75, 77, 85, 86] {
-            precondition(CurrentWeather(temperature_2m: -2, weather_code: code).effect == .snow)
+            precondition(CurrentWeather(temperature_2m: -2, weather_code: code, precipitation: 0.1).effect == .snow)
         }
         for code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 97, 99] {
-            precondition(CurrentWeather(temperature_2m: 10, weather_code: code).effect == .rain)
+            precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1).effect == .rain)
         }
         for code in [0, 1, 2, 3, 45, 48, 999] {
-            precondition(CurrentWeather(temperature_2m: 10, weather_code: code).effect == nil)
+            precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1).effect == nil)
         }
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [StubProtocol.self]
@@ -43,6 +45,16 @@ final class StubProtocol: URLProtocol {
             return (200, #"{"results":[{"id":1,"name":"Нижний Новгород","latitude":56.3,"longitude":44.0}]}"#)
         }
         let cities = try await api.cities("Нижний Новгород")
+        StubProtocol.handler = { request in
+            let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!.queryItems!
+            precondition(query.first { $0.name == "latitude" }?.value == "41.9022")
+            precondition(query.first { $0.name == "longitude" }?.value == "12.4573")
+            precondition(query.first { $0.name == "current" }!.value!.contains("precipitation"))
+            return (200, #"{"current":{"temperature_2m":18,"weather_code":80,"precipitation":0}}"#)
+        }
+        let dryRome = try await api.weather(WeatherCity(id: -2, name: "Рим", latitude: 41.90, longitude: 12.50))
+        precondition(dryRome.effect == nil)
+
         precondition(cities.count == 1 && cities[0].title == "Нижний Новгород")
         StubProtocol.handler = { _ in (200, "{}") }
         let empty = try await api.cities("Unknown")
@@ -60,7 +72,7 @@ final class StubProtocol: URLProtocol {
         precondition(!store.enabled && store.city == nil)
         store.setEnabled(true)
         precondition(!store.enabled)
-        StubProtocol.handler = { _ in (200, #"{"current":{"temperature_2m":-3,"weather_code":71}}"#) }
+        StubProtocol.handler = { _ in (200, #"{"current":{"precipitation":0.1,"temperature_2m":-3,"weather_code":71}}"#) }
         store.select(cities[0])
         await waitFor { !store.loading }
         precondition(store.enabled && store.current?.effect == .snow)
@@ -71,7 +83,7 @@ final class StubProtocol: URLProtocol {
         store.refresh()
         await waitFor { !store.loading }
         precondition(store.error != nil && store.current == nil)
-        StubProtocol.handler = { _ in (200, #"{"current":{"temperature_2m":20,"weather_code":0}}"#) }
+        StubProtocol.handler = { _ in (200, #"{"current":{"precipitation":0.1,"temperature_2m":20,"weather_code":0}}"#) }
         store.refresh()
         await waitFor { !store.loading }
         precondition(store.error == nil && store.current != nil && store.current?.effect == nil)
@@ -86,7 +98,7 @@ final class StubProtocol: URLProtocol {
         StubProtocol.handler = { request in
             let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!.queryItems!
             let code = query.first { $0.name == "latitude" }?.value == "48.85" ? 61 : 71
-            return (200, "{\"current\":{\"temperature_2m\":5,\"weather_code\":\(code)}}")
+            return (200, "{\"current\":{\"precipitation\":0.1,\"temperature_2m\":5,\"weather_code\":\(code)}}")
         }
         store.select(cities[0])
         store.select(second)

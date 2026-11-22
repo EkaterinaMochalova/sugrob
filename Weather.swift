@@ -32,8 +32,13 @@ struct WeatherResponse: Decodable { let current: CurrentWeather }
 struct CurrentWeather: Decodable {
     let temperature_2m: Double
     let weather_code: Int
+    var precipitation: Double? = nil
 
     var effect: Mode? {
+        guard let precipitation, precipitation.isFinite, precipitation > 0 else { return nil }
+        return codedEffect
+    }
+    var codedEffect: Mode? {
         switch weather_code {
         case 71, 73, 75, 77, 85, 86: return .snow
         case 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 97, 99: return .rain
@@ -80,9 +85,9 @@ struct WeatherAPI {
 
     func weather(_ city: WeatherCity) async throws -> CurrentWeather {
         let response: WeatherResponse = try await request("https://api.open-meteo.com/v1/forecast", items: [
-            URLQueryItem(name: "latitude", value: String(city.latitude)),
-            URLQueryItem(name: "longitude", value: String(city.longitude)),
-            URLQueryItem(name: "current", value: "temperature_2m,weather_code"),
+            URLQueryItem(name: "latitude", value: String(city.id == -2 ? 41.9022 : city.latitude)),
+            URLQueryItem(name: "longitude", value: String(city.id == -2 ? 12.4573 : city.longitude)),
+            URLQueryItem(name: "current", value: "temperature_2m,weather_code,precipitation"),
             URLQueryItem(name: "temperature_unit", value: "celsius"),
         ])
         return response.current

@@ -24,7 +24,7 @@ class WeatherService {
     this.state.loading = true; this.state.error = null; this.onChange();
     try {
       const u = new URL('https://api.open-meteo.com/v1/forecast');
-      u.search = new URLSearchParams({ latitude: city.latitude, longitude: city.longitude, current: 'temperature_2m,weather_code', temperature_unit: 'celsius' });
+      u.search = new URLSearchParams({ latitude: city.id === -2 ? 41.9022 : city.latitude, longitude: city.id === -2 ? 12.4573 : city.longitude, current: 'temperature_2m,weather_code,precipitation', temperature_unit: 'celsius' });
       const data = await this.request(u, this.controller.signal);
       if (token !== this.generation) return;
       if (!Number.isFinite(data.current?.temperature_2m) || !Number.isInteger(data.current?.weather_code)) throw new Error('Invalid weather');

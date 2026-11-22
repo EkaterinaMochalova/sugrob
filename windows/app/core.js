@@ -2,7 +2,7 @@
   'use strict';
   const cities = [
     { id: -1, name: 'Москва', latitude: 55.75, longitude: 37.62, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'moscow', detail: 'Ветка появляется из-за края, серебристый свет и тихий ветер.' },
-    { id: -2, name: 'Рим', latitude: 41.90, longitude: 12.50, country: 'Италия', timezone: 'Europe/Rome', portrait: 'rome', detail: 'Живая хвоя пинии, медовый свет и мягкий шелест.' },
+    { id: -2, name: 'Рим', latitude: 41.9022, longitude: 12.4573, country: 'Италия', timezone: 'Europe/Rome', portrait: 'rome', detail: 'Живая хвоя пинии, медовый свет и мягкий шелест.' },
     { id: -3, name: 'Афины', latitude: 37.98, longitude: 23.73, country: 'Греция', timezone: 'Europe/Athens', portrait: 'athens', detail: 'Оливковая ветка покачивается в бело-голубом свете.' },
     { id: -4, name: 'Санкт-Петербург', latitude: 59.94, longitude: 30.31, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'petersburg', detail: 'Отражения воды, редкие чайки и жемчужные июньские ночи.' },
     { id: -5, name: 'Токио', latitude: 35.68, longitude: 139.69, country: 'Япония', timezone: 'Asia/Tokyo', portrait: 'tokyo', detail: 'Ветка сакуры весной, клён осенью, проходящие отблески ночью.' },
@@ -41,6 +41,9 @@
     if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
     if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 97, 99].includes(code)) return 'rain';
     return null;
+  }
+  function currentEffect(current) {
+    return Number.isFinite(current?.precipitation) && current.precipitation > 0 ? effect(current.weather_code) : null;
   }
   function description(code) {
     if ([0, 1].includes(code)) return 'Ясно';
@@ -89,7 +92,7 @@
     }
     return ground !== null && oldY <= ground && newY >= ground ? { id: 'ground', y: ground } : null;
   }
-  const api = { cities, defaults, normalize, validCity, effect, description, portrait, mood, localParts, clamp, landing };
+  const api = { cities, defaults, normalize, validCity, effect, currentEffect, description, portrait, mood, localParts, clamp, landing };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Sugrob = api;
 })(globalThis);

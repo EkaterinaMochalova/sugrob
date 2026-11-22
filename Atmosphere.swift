@@ -12,7 +12,7 @@ enum CityPortrait: String, CaseIterable {
         case .newyork: return WeatherCity(id: -8, name: "Нью-Йорк", latitude: 40.7128, longitude: -74.0060, country: "США", timezone: "America/New_York")
         case .nizhny: return WeatherCity(id: -7, name: "Нижний Новгород", latitude: 56.33, longitude: 44.00, country: "Россия", timezone: "Europe/Moscow")
         case .moscow: return WeatherCity(id: -1, name: "Москва", latitude: 55.75, longitude: 37.62, country: "Россия", timezone: "Europe/Moscow")
-        case .rome: return WeatherCity(id: -2, name: "Рим", latitude: 41.90, longitude: 12.50, country: "Италия", timezone: "Europe/Rome")
+        case .rome: return WeatherCity(id: -2, name: "Рим", latitude: 41.9022, longitude: 12.4573, country: "Италия", timezone: "Europe/Rome")
         case .athens: return WeatherCity(id: -3, name: "Афины", latitude: 37.98, longitude: 23.73, country: "Греция", timezone: "Europe/Athens")
         case .petersburg: return WeatherCity(id: -4, name: "Санкт-Петербург", latitude: 59.94, longitude: 30.31, country: "Россия", timezone: "Europe/Moscow")
         case .tokyo: return WeatherCity(id: -5, name: "Токио", latitude: 35.68, longitude: 139.69, country: "Япония", timezone: "Asia/Tokyo")
@@ -88,7 +88,7 @@ struct CityMood: Equatable {
         else { light = .day }
         overcast = [2, 3, 45, 48].contains(code ?? -1)
         fog = [45, 48].contains(code ?? -1)
-        precipitation = code.map { CurrentWeather(temperature_2m: 0, weather_code: $0).effect != nil } ?? false
+        precipitation = code.map { CurrentWeather(temperature_2m: 0, weather_code: $0).codedEffect != nil } ?? false
     }
 
     var particle: MoodParticle {
