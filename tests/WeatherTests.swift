@@ -25,6 +25,7 @@ final class StubProtocol: URLProtocol {
 
     @MainActor static func main() async throws {
         try checkAtmosphere()
+        for code in [2,3] { precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0).effect == .clouds) }
         for code in [61, 71, 80, 95] {
             let dry = CurrentWeather(temperature_2m: 13, weather_code: code, precipitation: 0)
             precondition(dry.effect == nil && dry.description == "Без осадков")
@@ -41,7 +42,7 @@ final class StubProtocol: URLProtocol {
         for code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 97, 99] {
             precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1).effect == .rain)
         }
-        for code in [0, 1, 2, 3, 45, 48, 999] {
+        for code in [0, 1, 45, 48, 999] {
             precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1).effect == nil)
         }
         let config = URLSessionConfiguration.ephemeral

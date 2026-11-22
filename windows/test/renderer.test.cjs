@@ -123,3 +123,17 @@ test('Petals pass in front of windows while a small background layer settles', (
  assert.ok(r.run('falling[0].y')>200);
  assert.equal(r.run('resting.length'),1);
 });
+test('Clouds drift horizontally, stay bounded, pause and disappear in clear weather', () => {
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'clouds',cursor:true}),weather:{current:null}})})`);
+ assert.equal(r.run('falling.length'),4);
+ const x=r.run('falling[0].x'),y=r.run('falling[0].y');
+ r.run('tick(.04);draw()');
+ assert.ok(r.run('falling[0].x')>x);assert.equal(r.run('falling[0].y'),y);
+ r.run('for(let i=0;i<10000;i++)tick(.04)');assert.ok(r.run('falling.length')<=8);assert.equal(r.run('resting.length'),0);
+ const still=r.run('JSON.stringify(falling)');r.run('state.settings.paused=true;frame(1000);frame(1040)');assert.equal(r.run('JSON.stringify(falling)'),still);
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({enabled:true,city:C.cities[0]}),weather:{current:{weather_code:2,precipitation:0}}})})`);
+ assert.equal(r.run('mode'),'clouds');
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({enabled:true,city:C.cities[0]}),weather:{current:{weather_code:0,precipitation:0}}})})`);
+ assert.equal(r.run('falling.length'),0);
+});

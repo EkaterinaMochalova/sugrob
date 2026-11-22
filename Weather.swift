@@ -4,10 +4,11 @@ import SwiftUI
 extension Notification.Name { static let previewAtmosphere = Notification.Name("SugrobPreviewAtmosphere") }
 
 enum Mode: String, CaseIterable, Identifiable {
-    case snow, leaves, rain, petals
+    case snow, leaves, rain, petals, clouds
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .clouds: return "Облака"
         case .snow: return "Снег"
         case .leaves: return "Осенние листья"
         case .rain: return "Дождь"
@@ -35,6 +36,7 @@ struct CurrentWeather: Decodable {
     var precipitation: Double? = nil
 
     var effect: Mode? {
+        if [2, 3].contains(weather_code) { return .clouds }
         guard let precipitation, precipitation.isFinite, precipitation > 0 else { return nil }
         return codedEffect
     }

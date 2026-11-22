@@ -25,7 +25,7 @@ function renderState(next) {
   state = next; const s = state.settings;
   mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
   const key = String(mode);
-  if (key !== modeKey) { beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; }
+  if (key !== modeKey) { beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<4;i++){spawn(s);falling[falling.length-1].x=w*i/3;} }
   updateMood();
   sounds.sync(next.audioLeader && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
 }
@@ -45,6 +45,7 @@ api.onPreview(() => { if (state?.settings.enabled && !state.settings.paused && m
 api.onClear(() => { beads = []; for (const p of resting) release(p); resting = []; motes = []; });
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
+  if (mode === 'clouds') { falling.push({kind:'clouds',x:-300,y:h*(.12+Math.random()*.30),vx:7+Math.random()*5,size:(90+Math.random()*60)*s.size,rotation:0,alpha:.14+Math.random()*.14,tint:'#eeeeee'}); return; }
   const kind = mode, scale = .6 + Math.random() * .9;
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,
@@ -85,8 +86,8 @@ function tick(dt) {
   const s = state.settings; time += dt;
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }
   if (mode) {
-    spawnDebt += dt * (mode === 'rain' ? 110 : 42) * s.intensity * w / 1440;
-    while (spawnDebt >= 1 && falling.length < 900) { spawn(s); spawnDebt--; }
+    spawnDebt += dt * (mode === 'clouds' ? .025 : mode === 'rain' ? 110 : 42) * s.intensity * w / 1440;
+    while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 8 : 900)) { spawn(s); spawnDebt--; }
     spawnDebt = Math.min(spawnDebt, 4);
   }
   const surfaces = s.onWindows ? windows : [];
@@ -94,6 +95,7 @@ function tick(dt) {
   const piles = new Map();
   for (const p of resting) { const key = `${p.surface}:${Math.floor(p.x / 9)}`; piles.set(key, (piles.get(key) || 0) + 1); }
   falling = falling.filter(p => {
+    if(p.kind === 'clouds'){p.x+=p.vx*dt*s.speed;return p.x<w+p.size*3;}
     const oldY = p.y;
     if (s.cursor && p.kind !== 'rain' && Math.hypot(p.x - cursor.x, p.y - cursor.y) < 65) p.vx += Math.sign(p.x - cursor.x) * 110 * dt;
     p.x += (p.vx + (p.kind === 'rain' ? -24 : Math.sin(time + p.phase) * 14)) * dt * s.speed;

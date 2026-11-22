@@ -77,8 +77,20 @@ struct Look {
     let solidDrift: Bool // сугроб рисуется сплошной белой полосой, а лежащие частицы прячутся
 }
 
+let cloudTexture = sprite(480, 180) { _ in
+    for (x, y, w, h) in [(30.0, 28.0, 240.0, 100.0), (140, 28, 220, 135), (240, 25, 210, 105)] {
+        let path = NSBezierPath(ovalIn: CGRect(x: x, y: y, width: w, height: h))
+        NSGradient(colorsAndLocations: (NSColor(white: 0.9, alpha: 0.8), 0),
+            (NSColor(white: 0.85, alpha: 0.5), 0.4), (NSColor(white: 0.8, alpha: 0), 1))!
+            .draw(in: path, relativeCenterPosition: .zero)
+    }
+}
 func makeLook(_ mode: Mode) -> Look {
     switch mode {
+    case .clouds:
+        return Look(texture: cloudTexture, aspect: 480.0 / 180, colors: [.white], alpha: 0.14...0.28,
+                    rate: 0.025, fall: 0, drag: 0, sway: 0, spin: 0, size: 85...145,
+                    bump: 0, settles: false, solidDrift: false)
     case .snow:
         // Подогнано по записи Snowhush: много мелких тусклых снежинок, частое мелкое покачивание, сплошной сугроб.
         return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0.35...0.95, rate: 45, fall: 90,
@@ -255,6 +267,9 @@ final class SnowScene: SKScene {
             }
             spawnDebt = 0
         }
+        if newMode == .clouds {
+            for i in 0..<4 { spawn(); falling.last?.node.position.x = size.width * CGFloat(i) / 3 }
+        }
     }
 
     override func update(_ currentTime: TimeInterval) {
@@ -269,14 +284,14 @@ final class SnowScene: SKScene {
             lastScan = currentTime
             scanWindows()
         }
-        if snowing && falling.count < 5000 {
+        if snowing && falling.count < (mode == .clouds ? 8 : 5000) {
             spawnDebt += look.rate * intensity * size.width / 1440 * raw
             while spawnDebt >= 1 {
                 spawnDebt -= 1
                 spawn()
             }
         }
-        if cursor && mode != .rain { pushByCursor(raw) } else { lastMouse = nil }
+        if cursor && mode != .rain && mode != .clouds { pushByCursor(raw) } else { lastMouse = nil }
         fall(dt)
         updateBeads(dt)
         while resting.count > maxResting {
@@ -297,9 +312,10 @@ final class SnowScene: SKScene {
         let aspect = (mode == .leaves || mode == .petals) ? texture.size().width / texture.size().height : look.aspect
         let node = SKSpriteNode(texture: texture, color: look.colors.randomElement()!,
                                 size: CGSize(width: h * aspect, height: h))
-        node.colorBlendFactor = (mode == .leaves || mode == .petals) ? 0 : 1
+        node.colorBlendFactor = (mode == .leaves || mode == .petals || mode == .clouds) ? 0 : 1
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
+        if mode == .clouds { node.position = CGPoint(x: -h * look.aspect, y: size.height * .random(in: 0.58...0.88)) }
         if mode == .rain { node.zRotation = -0.04 }
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }
         field.addChild(node)
@@ -316,6 +332,13 @@ final class SnowScene: SKScene {
         while i < falling.count {
             let f = falling[i]
             let p = f.node.position
+            if mode == .clouds {
+                f.node.position.x += dt * (7 + f.weight * 4)
+                if f.node.position.x > size.width + f.node.size.width {
+                    f.node.removeFromParent(); falling.remove(at: i)
+                } else { i += 1 }
+                continue
+            }
             // vx — толчки и ветер, они гаснут; покачивание добавляется отдельно, чтобы сопротивление его не гасило.
             f.vx -= f.vx * k
             f.vy += (-look.fall * f.weight - f.vy) * k
@@ -652,7 +675,7 @@ struct SettingsView: View {
                     Text("Погода города").tag(true).disabled(weather.city == nil)
                     Text("Своя погода").tag(false)
                 }.pickerStyle(.segmented)
-                Picker("Что падает", selection: $mode) {
+                Picker("Эффект", selection: $mode) {
                     ForEach(Mode.allCases) { Text($0.title).tag($0) }
                 }.disabled(weather.enabled)
                 Toggle("Пауза", isOn: $paused)

@@ -32,7 +32,7 @@
     for (const [key, min, max] of [['intensity', .1, 3], ['speed', .3, 2.5], ['size', .5, 2.5], ['opacity', .1, 1], ['strength', .15, 1], ['volume', 0, 1], ['drift', 300, 6000]]) {
       if (Number.isFinite(input[key])) s[key] = clamp(input[key], min, max);
     }
-    if (['snow', 'rain', 'leaves', 'petals'].includes(input.mode)) s.mode = input.mode;
+    if (['snow', 'rain', 'leaves', 'petals', 'clouds'].includes(input.mode)) s.mode = input.mode;
     s.city = validCity(input.city);
     if (!s.city) s.enabled = false;
     return s;
@@ -43,6 +43,7 @@
     return null;
   }
   function currentEffect(current) {
+    if ([2,3].includes(current?.weather_code)) return 'clouds';
     return Number.isFinite(current?.precipitation) && current.precipitation > 0 ? effect(current.weather_code) : null;
   }
   function currentDescription(current) {

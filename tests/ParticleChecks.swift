@@ -21,6 +21,14 @@ extension SnowScene {
             precondition(falling.allSatisfy { $0.node.position.y < 200 })
             precondition(resting.count == (kind == .rain ? 0 : 1))
         }
+        setMode(.clouds)
+        precondition(falling.count == 4)
+        let x = falling[0].node.position.x, y = falling[0].node.position.y
+        fall(0.05)
+        precondition(falling[0].node.position.x > x && falling[0].node.position.y == y)
+        precondition(resting.isEmpty)
+        setMode(.snow)
+        precondition(falling.isEmpty)
         print("PASS: snow, petals and leaves cross window edges; rain never settles")
     }
 }
