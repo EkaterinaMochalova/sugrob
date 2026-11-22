@@ -184,7 +184,7 @@ function draw() {
   for (const flash of [bolt,previewBolt]) {
   if (flash && !s.paused && s.lightning !== false) {
     ctx.save(); ctx.globalAlpha = s.opacity*.45*Math.max(0,1-flash.age/.65);
-    ctx.strokeStyle = '#c7d9ff'; ctx.lineWidth = 1.5; ctx.shadowColor = '#c7d9ff'; ctx.shadowBlur = 12;
+    ctx.strokeStyle = '#f7f7f7'; ctx.lineWidth = 1.5; ctx.shadowColor = '#f7f7f7'; ctx.shadowBlur = 12;
     ctx.beginPath(); flash.points.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke(); ctx.restore();
   }
   }

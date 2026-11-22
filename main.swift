@@ -316,7 +316,7 @@ final class SnowScene: SKScene {
             path.addLine(to: point)
         }
         let bolt = SKShapeNode(path: path)
-        bolt.strokeColor = NSColor(red: 0.78, green: 0.85, blue: 1, alpha: 1)
+        bolt.strokeColor = NSColor(white: 0.97, alpha: 1)
         bolt.lineWidth = 1.5; bolt.glowWidth = 12; bolt.alpha = 0.45
         return bolt
     }
