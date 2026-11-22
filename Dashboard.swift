@@ -180,7 +180,7 @@ struct DashboardView: View {
             Text(city.id == -2 ? "Open-Meteo · район Ватикана" : "Open-Meteo · погода в районе города").font(.caption).foregroundStyle(.secondary)
             if let current = weather.current {
                 Text("\(Int(current.temperature_2m.rounded()))° · \(current.description)").font(.system(size: 22, weight: .light))
-                if current.effect == nil { Text("Сейчас без осадков — экран остаётся чистым.").font(.caption).foregroundStyle(.secondary) }
+                if current.effect == nil { Text(current.precipitationNote).font(.caption).foregroundStyle(.secondary) }
             } else { Text(weather.loading ? "Узнаём погоду…" : weather.enabled ? "Погода пока недоступна." : "Включи погоду города, чтобы обновить данные.").font(.caption) }
             if let error = weather.error { Text(error).font(.caption).foregroundStyle(.red) }
             HStack {

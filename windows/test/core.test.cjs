@@ -123,3 +123,12 @@ test('Saved Rome coordinates request the Vatican district and precipitation', as
  assert.equal(C.currentEffect(service.state.current),null);
  service.close();
 });
+
+test('Weather label agrees with dry, wet and missing precipitation', () => {
+ for (const weather_code of [61,71,80,95]) {
+  assert.equal(C.currentDescription({weather_code,precipitation:0}),'Без осадков');
+  assert.equal(C.currentDescription({weather_code}),'Нет данных об осадках');
+ }
+ assert.equal(C.currentDescription({weather_code:61,precipitation:0.1}),'Дождь');
+ assert.equal(C.currentDescription({weather_code:0,precipitation:0}),'Ясно');
+});

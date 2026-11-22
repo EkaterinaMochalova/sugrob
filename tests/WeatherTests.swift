@@ -25,6 +25,14 @@ final class StubProtocol: URLProtocol {
 
     @MainActor static func main() async throws {
         try checkAtmosphere()
+        for code in [61, 71, 80, 95] {
+            let dry = CurrentWeather(temperature_2m: 13, weather_code: code, precipitation: 0)
+            precondition(dry.effect == nil && dry.description == "Без осадков")
+            let missing = CurrentWeather(temperature_2m: 13, weather_code: code)
+            precondition(missing.description == "Нет данных об осадках")
+            precondition(missing.precipitationNote.contains("Нет данных"))
+        }
+        precondition(CurrentWeather(temperature_2m: 13, weather_code: 61, precipitation: 0.1).description == "Дождь")
         precondition(CurrentWeather(temperature_2m: 18, weather_code: 80, precipitation: 0).effect == nil)
         precondition(CurrentWeather(temperature_2m: 18, weather_code: 80).effect == nil)
         for code in [71, 73, 75, 77, 85, 86] {

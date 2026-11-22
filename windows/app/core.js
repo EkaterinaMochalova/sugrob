@@ -45,6 +45,13 @@
   function currentEffect(current) {
     return Number.isFinite(current?.precipitation) && current.precipitation > 0 ? effect(current.weather_code) : null;
   }
+  function currentDescription(current) {
+    if (effect(current?.weather_code)) {
+      if (!Number.isFinite(current?.precipitation) || current.precipitation < 0) return 'Нет данных об осадках';
+      if (current.precipitation === 0) return 'Без осадков';
+    }
+    return description(current?.weather_code);
+  }
   function description(code) {
     if ([0, 1].includes(code)) return 'Ясно';
     if ([2, 3].includes(code)) return 'Облачно';
@@ -92,7 +99,7 @@
     }
     return ground !== null && oldY <= ground && newY >= ground ? { id: 'ground', y: ground } : null;
   }
-  const api = { cities, defaults, normalize, validCity, effect, currentEffect, description, portrait, mood, localParts, clamp, landing };
+  const api = { cities, defaults, normalize, validCity, effect, currentEffect, currentDescription, description, portrait, mood, localParts, clamp, landing };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Sugrob = api;
 })(globalThis);

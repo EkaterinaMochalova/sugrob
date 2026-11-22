@@ -45,7 +45,17 @@ struct CurrentWeather: Decodable {
         default: return nil
         }
     }
+    var precipitationNote: String {
+        guard let precipitation, precipitation.isFinite, precipitation >= 0 else {
+            return "Нет данных об осадках — эффекты скрыты."
+        }
+        return precipitation == 0 ? "По данным сервиса осадков нет — экран остаётся чистым." : "Тип осадков не определён — эффекты скрыты."
+    }
     var description: String {
+        if codedEffect != nil {
+            guard let precipitation, precipitation.isFinite, precipitation >= 0 else { return "Нет данных об осадках" }
+            if precipitation == 0 { return "Без осадков" }
+        }
         switch weather_code {
         case 0, 1: return "Ясно"
         case 2, 3: return "Облачно"
@@ -276,7 +286,7 @@ struct WeatherSettingsView: View {
             if weather.enabled {
                 if let current = weather.current {
                     Text("\(current.description), \(current.temperature_2m, specifier: "%.0f") °C")
-                    if current.effect == nil { Text("Осадков на экране нет.").font(.caption) }
+                    if current.effect == nil { Text(current.precipitationNote).font(.caption) }
                 }
                 if let date = weather.updatedAt {
                     Text("Последнее обновление: \(date.formatted(date: .omitted, time: .shortened))").font(.caption)
