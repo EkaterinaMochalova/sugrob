@@ -77,19 +77,25 @@ struct Look {
     let solidDrift: Bool // сугроб рисуется сплошной белой полосой, а лежащие частицы прячутся
 }
 
-let cloudTexture = sprite(480, 180) { _ in
+let cloudFallbackTexture = sprite(480, 180) { _ in
     for (x, y, w, h) in [(30.0, 28.0, 240.0, 100.0), (140, 28, 220, 135), (240, 25, 210, 105)] {
         let path = NSBezierPath(ovalIn: CGRect(x: x, y: y, width: w, height: h))
-        NSGradient(colorsAndLocations: (NSColor(white: 0.9, alpha: 0.8), 0),
-            (NSColor(white: 0.85, alpha: 0.5), 0.4), (NSColor(white: 0.8, alpha: 0), 1))!
+        NSGradient(colorsAndLocations: (NSColor(white: 1, alpha: 0.95), 0),
+            (NSColor(white: 0.97, alpha: 0.92), 0.45),
+            (NSColor(white: 0.60, alpha: 0.72), 0.78), (NSColor(white: 0.60, alpha: 0), 1))!
             .draw(in: path, relativeCenterPosition: .zero)
     }
 }
+let cloudTexture: SKTexture = {
+    guard let url = Bundle.main.url(forResource: "cloud-cumulus", withExtension: "png", subdirectory: "AtmosphereAssets"),
+          let image = NSImage(contentsOf: url) else { return cloudFallbackTexture }
+    return SKTexture(image: image)
+}()
 func makeLook(_ mode: Mode) -> Look {
     switch mode {
     case .clouds:
-        return Look(texture: cloudTexture, aspect: 480.0 / 180, colors: [.white], alpha: 0.14...0.28,
-                    rate: 0.025, fall: 0, drag: 0, sway: 0, spin: 0, size: 85...145,
+        return Look(texture: cloudTexture, aspect: cloudTexture.size().width / cloudTexture.size().height, colors: [.white], alpha: 0.55...0.72,
+                    rate: 0.025, fall: 0, drag: 0, sway: 0, spin: 0, size: 105...165,
                     bump: 0, settles: false, solidDrift: false)
     case .snow:
         // Подогнано по записи Snowhush: много мелких тусклых снежинок, частое мелкое покачивание, сплошной сугроб.
@@ -315,7 +321,7 @@ final class SnowScene: SKScene {
         node.colorBlendFactor = (mode == .leaves || mode == .petals || mode == .clouds) ? 0 : 1
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
-        if mode == .clouds { node.position = CGPoint(x: -h * look.aspect, y: size.height * .random(in: 0.58...0.88)) }
+        if mode == .clouds { node.position = CGPoint(x: -h * look.aspect, y: size.height * .random(in: 0.43...0.82)) }
         if mode == .rain { node.zRotation = -0.04 }
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }
         field.addChild(node)

@@ -45,7 +45,7 @@ api.onPreview(() => { if (state?.settings.enabled && !state.settings.paused && m
 api.onClear(() => { beads = []; for (const p of resting) release(p); resting = []; motes = []; });
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
-  if (mode === 'clouds') { falling.push({kind:'clouds',x:-300,y:h*(.12+Math.random()*.30),vx:7+Math.random()*5,size:(90+Math.random()*60)*s.size,rotation:0,alpha:.14+Math.random()*.14,tint:'#eeeeee'}); return; }
+  if (mode === 'clouds') { falling.push({kind:'clouds',x:-300,y:h*(.18+Math.random()*.39),vx:7+Math.random()*5,size:(105+Math.random()*60)*s.size,rotation:0,alpha:.55+Math.random()*.17,tint:'#eeeeee'}); return; }
   const kind = mode, scale = .6 + Math.random() * .9;
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,

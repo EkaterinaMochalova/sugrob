@@ -1,6 +1,7 @@
 'use strict';
 const leafImages = ['ochre','rust','olive'].map(name => { const image = new Image(); image.src = `assets/leaf-${name}.png`; return image; });
 const petalImages = ['blush','curled'].map(name => { const image = new Image(); image.src = `assets/petal-${name}.png`; return image; });
+const cloudImage = new Image(); cloudImage.src = 'assets/cloud-cumulus.png';
 window.SugrobArt = {
   rgba: (t, a) => `rgba(${t.join(',')},${a})`,
   backdrop(c, w, h, m) {
@@ -18,11 +19,7 @@ window.SugrobArt = {
     c.globalAlpha *= alpha; c.fillStyle = tint; c.strokeStyle = tint; c.lineWidth = 1;
     c.beginPath();
     if (kind === 'clouds') {
-      for (const [x,y,r] of [[-12,1,11],[0,-2,13],[13,1,10]]) {
-        const g=c.createRadialGradient(x,y,0,x,y,r);
-        g.addColorStop(0,'rgba(230,230,230,.8)');g.addColorStop(.4,'rgba(217,217,217,.5)');g.addColorStop(1,'rgba(204,204,204,0)');
-        c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
-      }
+      if (cloudImage.complete && cloudImage.naturalWidth) c.drawImage(cloudImage,-10*cloudImage.naturalWidth/cloudImage.naturalHeight,-10,20*cloudImage.naturalWidth/cloudImage.naturalHeight,20);
     }
     else if (kind === 'rain') { const g=c.createLinearGradient(0,-8,0,8); g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(.65,tint); g.addColorStop(1,'rgba(255,255,255,0)'); c.strokeStyle=g; c.lineCap='round'; c.moveTo(0,-8); c.lineTo(0,8); c.stroke(); }
     else if (kind === 'leaves') {
