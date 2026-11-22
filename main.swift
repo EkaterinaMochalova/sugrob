@@ -91,11 +91,16 @@ let cloudTexture: SKTexture = {
           let image = NSImage(contentsOf: url) else { return cloudFallbackTexture }
     return SKTexture(image: image)
 }()
+let cloudTextures: [SKTexture] = ["stratus", "ragged", "cirrus"].compactMap { name in
+    guard let url = Bundle.main.url(forResource: "cloud-" + name, withExtension: "png", subdirectory: "AtmosphereAssets"),
+          let image = NSImage(contentsOf: url) else { return nil }
+    return SKTexture(image: image)
+}
 func makeLook(_ mode: Mode) -> Look {
     switch mode {
     case .clouds:
-        return Look(texture: cloudTexture, aspect: cloudTexture.size().width / cloudTexture.size().height, colors: [.white], alpha: 0.55...0.72,
-                    rate: 0.025, fall: 0, drag: 0, sway: 0, spin: 0, size: 105...165,
+        return Look(texture: cloudTexture, aspect: cloudTexture.size().width / cloudTexture.size().height, colors: [.white], alpha: 0.16...0.28,
+                    rate: 0.015, fall: 0, drag: 0, sway: 0, spin: 0, size: 48...82,
                     bump: 0, settles: false, solidDrift: false)
     case .snow:
         // Подогнано по записи Snowhush: много мелких тусклых снежинок, частое мелкое покачивание, сплошной сугроб.
@@ -234,6 +239,7 @@ final class SnowScene: SKScene {
     private var stormWait: CGFloat = 8
     private var lightning: SKShapeNode?
     private var lightningAge: CGFloat = 0
+    private var cloudIndex = 0
     private var mode: Mode?
     private var look = makeLook(.snow)
     private let origin: CGPoint
@@ -278,7 +284,7 @@ final class SnowScene: SKScene {
             spawnDebt = 0
         }
         if newMode == .clouds {
-            for i in 0..<4 { spawn(); falling.last?.node.position.x = size.width * CGFloat(i) / 3 }
+            for i in 0..<3 { spawn(); falling.last?.node.position.x = size.width * (0.10 + CGFloat(i) * 0.35) }
         }
     }
 
@@ -323,7 +329,7 @@ final class SnowScene: SKScene {
             lastScan = currentTime
             scanWindows()
         }
-        if snowing && falling.count < (mode == .clouds ? 8 : 5000) {
+        if snowing && falling.count < (mode == .clouds ? 5 : 5000) {
             spawnDebt += look.rate * intensity * size.width / 1440 * raw
             while spawnDebt >= 1 {
                 spawnDebt -= 1
@@ -346,15 +352,21 @@ final class SnowScene: SKScene {
     private func spawn() {
         // Глубина: 0 — далеко (мелкая, тусклая, медленная), 1 — близко. Без неё снег выглядит плоской сеткой точек.
         let depth = CGFloat.random(in: 0...1)
-        let h = (look.size.lowerBound + (look.size.upperBound - look.size.lowerBound) * depth) * sizeFactor
-        let texture = mode == .leaves ? (leafTextures.randomElement() ?? look.texture) : mode == .petals ? (petalTextures.randomElement() ?? look.texture) : look.texture
-        let aspect = (mode == .leaves || mode == .petals) ? texture.size().width / texture.size().height : look.aspect
+        let h = (look.size.lowerBound + (look.size.upperBound - look.size.lowerBound) * depth) * (mode == .clouds ? min(sizeFactor, 1.15) : sizeFactor)
+        let cloud = cloudTextures.isEmpty ? look.texture : cloudTextures[cloudIndex % cloudTextures.count]
+        let texture = mode == .clouds ? cloud : mode == .leaves ? (leafTextures.randomElement() ?? look.texture) : mode == .petals ? (petalTextures.randomElement() ?? look.texture) : look.texture
+        let aspect = (mode == .leaves || mode == .petals || mode == .clouds) ? texture.size().width / texture.size().height : look.aspect
         let node = SKSpriteNode(texture: texture, color: look.colors.randomElement()!,
                                 size: CGSize(width: h * aspect, height: h))
         node.colorBlendFactor = (mode == .leaves || mode == .petals || mode == .clouds) ? 0 : 1
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
-        if mode == .clouds { node.position = CGPoint(x: -h * look.aspect, y: size.height * .random(in: 0.43...0.82)) }
+        if mode == .clouds {
+            node.size.width = min(290, node.size.width * .random(in: 0.85...1.1))
+            node.xScale = cloudIndex % 2 == 0 ? 1 : -1
+            cloudIndex += 1
+            node.position = CGPoint(x: -node.size.width, y: size.height - .random(in: 12...60))
+        }
         if (mode == .rain || mode == .storm) { node.zRotation = -0.04 }
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }
         field.addChild(node)
@@ -372,7 +384,7 @@ final class SnowScene: SKScene {
             let f = falling[i]
             let p = f.node.position
             if mode == .clouds {
-                f.node.position.x += dt * (7 + f.weight * 4)
+                f.node.position.x += dt * (4 + f.weight * 3)
                 if f.node.position.x > size.width + f.node.size.width {
                     f.node.removeFromParent(); falling.remove(at: i)
                 } else { i += 1 }

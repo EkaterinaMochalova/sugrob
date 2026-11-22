@@ -3,6 +3,7 @@ const C = window.Sugrob, art = window.SugrobArt, api = window.sugrob;
 const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
 const background = document.createElement('canvas'), bg = background.getContext('2d');
 let w = 1, h = 1, dpr = 1, state, mode = 'snow', mood, moodKey = '', modeKey = '', ground = 0;
+let cloudIndex = 0;
 let stormWait = 8, bolt = null;
 let beads = [];
 let falling = [], resting = [], motes = [], windows = [], cursor = { x: -1000, y: -1000 };
@@ -26,7 +27,7 @@ function renderState(next) {
   state = next; const s = state.settings;
   mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
   const key = String(mode);
-  if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<4;i++){spawn(s);falling[falling.length-1].x=w*i/3;} }
+  if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<3;i++){spawn(s);falling[falling.length-1].x=w*(.10+i*.35);} }
   updateMood();
   sounds.sync(next.audioLeader && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
 }
@@ -46,7 +47,7 @@ api.onPreview(() => { if (state?.settings.enabled && !state.settings.paused && m
 api.onClear(() => { beads = []; for (const p of resting) release(p); resting = []; motes = []; });
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
-  if (mode === 'clouds') { falling.push({kind:'clouds',x:-300,y:h*(.18+Math.random()*.39),vx:7+Math.random()*5,size:(105+Math.random()*60)*s.size,rotation:0,alpha:.55+Math.random()*.17,tint:'#eeeeee'}); return; }
+  if (mode === 'clouds') { falling.push({kind:'clouds',x:-300,y:12+Math.random()*48,vx:4+Math.random()*3,size:(48+Math.random()*34)*Math.min(s.size,1.15),variant:cloudIndex++%3,stretch:.85+Math.random()*.25,rotation:0,alpha:.16+Math.random()*.12,tint:'#eeeeee'}); return; }
   const kind = mode === 'storm' ? 'rain' : mode, scale = .6 + Math.random() * .9;
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,
@@ -99,8 +100,8 @@ function tick(dt) {
   } else { bolt = null; stormWait = 8; }
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }
   if (mode) {
-    spawnDebt += dt * (mode === 'clouds' ? .025 : (mode === 'rain' || mode === 'storm') ? 110 : 42) * s.intensity * w / 1440;
-    while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 8 : 900)) { spawn(s); spawnDebt--; }
+    spawnDebt += dt * (mode === 'clouds' ? .015 : (mode === 'rain' || mode === 'storm') ? 110 : 42) * s.intensity * w / 1440;
+    while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 5 : 900)) { spawn(s); spawnDebt--; }
     spawnDebt = Math.min(spawnDebt, 4);
   }
   const surfaces = s.onWindows ? windows : [];
@@ -164,8 +165,8 @@ function draw() {
     drawEvents(s);
   }
   ctx.globalAlpha = s.opacity;
-  for (const p of resting) art.particle(ctx, p.kind, p.x, p.y, p.size, p.rotation, p.tint, p.alpha);
-  for (const p of falling) art.particle(ctx, p.kind, p.x, p.y, p.size, p.rotation, p.tint, p.alpha);
+  for (const p of resting) art.particle(ctx, p.kind, p.x, p.y, p.size, p.rotation, p.tint, p.alpha, p.variant, p.stretch);
+  for (const p of falling) art.particle(ctx, p.kind, p.x, p.y, p.size, p.rotation, p.tint, p.alpha, p.variant, p.stretch);
   for (const b of beads) {
     const slide=Math.max(0,b.age-1.5);
     ctx.globalAlpha=s.opacity*Math.min(1,(4-b.age)/1.5)*.6;
