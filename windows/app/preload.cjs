@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld('sugrob', {
   openCamera: id => ipcRenderer.invoke('open-camera', id),
   state: () => ipcRenderer.invoke('state'),
   update: patch => ipcRenderer.invoke('update', patch),
-  select: (city, atmosphere) => ipcRenderer.invoke('select', city, atmosphere),
+  select: (city, atmosphere, preserveSource = true) => ipcRenderer.invoke('select', city, atmosphere, preserveSource),
   search: query => ipcRenderer.invoke('search', query),
   refresh: () => ipcRenderer.invoke('refresh'),
   preview: () => ipcRenderer.invoke('preview'),

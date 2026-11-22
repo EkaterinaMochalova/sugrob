@@ -49,8 +49,10 @@ let petalTexture = sprite(16, 26) { r in
     NSColor.white.set()
     NSBezierPath(ovalIn: r.insetBy(dx: 1, dy: 1)).fill()
 }
-let dropTexture = sprite(3, 40) { r in
-    NSGradient(starting: NSColor.white.withAlphaComponent(0), ending: .white)!.draw(in: r, angle: -90)
+let dropTexture = sprite(8, 64) { r in
+    NSGradient(colorsAndLocations: (.white.withAlphaComponent(0), 0), (.white, 0.65), (.white.withAlphaComponent(0), 1))!.draw(in: r, angle: -90)
+    NSGraphicsContext.current?.cgContext.setBlendMode(.destinationIn)
+    NSGradient(colorsAndLocations: (.white.withAlphaComponent(0), 0), (.white, 0.5), (.white.withAlphaComponent(0), 1))!.draw(in: r, angle: 0)
 }
 
 /// Как выглядит и падает один вид частиц. Скорости в пунктах в секунду.
@@ -78,8 +80,8 @@ func makeLook(_ mode: Mode) -> Look {
                     alpha: 0.85...1, rate: 8, fall: 80, drag: 1.2, sway: 45, spin: 2, size: 14...24, bump: 0.15,
                     settles: true, solidDrift: false)
     case .rain:
-        return Look(texture: dropTexture, aspect: 3.0 / 40, colors: [.white], alpha: 0.3...0.6, rate: 150, fall: 900,
-                    drag: 8, sway: 0, spin: 0, size: 18...32, bump: 0, settles: false, solidDrift: false)
+        return Look(texture: dropTexture, aspect: 1.0 / 14, colors: [.white], alpha: 0.18...0.42, rate: 110, fall: 640,
+                    drag: 8, sway: 0, spin: 0, size: 14...26, bump: 0, settles: false, solidDrift: false)
     case .petals:
         return Look(texture: petalTexture, aspect: 16.0 / 26,
                     colors: [NSColor(red: 1, green: 0.78, blue: 0.85, alpha: 1), NSColor(red: 1, green: 0.9, blue: 0.93, alpha: 1)],
@@ -91,6 +93,7 @@ func makeLook(_ mode: Mode) -> Look {
 // MARK: - Симуляция
 
 let columnWidth: CGFloat = 4
+private let snowSmoothingWeights = (-6...6).map { exp(-CGFloat($0 * $0) / 12.5) }
 
 final class Flake {
     let node: SKSpriteNode
@@ -144,7 +147,7 @@ final class Surface {
             for offset in -6...6 {
                 let j = i + offset
                 guard heights.indices.contains(j) else { continue }
-                let w = exp(-CGFloat(offset * offset) / 12.5)
+                let w = snowSmoothingWeights[offset + 6]
                 sum += heights[j] * w; weight += w
             }
             return sum / max(weight, 0.001)
@@ -195,6 +198,7 @@ final class SnowScene: SKScene {
             }
             windows = [:]
             order = []
+            lastWindowRects = []
         }
     }
     let atmosphere = AtmosphereNode()
@@ -211,6 +215,7 @@ final class SnowScene: SKScene {
     private var lastTime: TimeInterval = 0, lastScan: TimeInterval = 0
     private var clock: CGFloat = 0, spawnDebt: CGFloat = 0
     private var lastMouse: CGPoint?
+    private var lastWindowRects: [(id: Int, rect: CGRect)] = []
 
     init(screen: NSScreen) {
         origin = screen.frame.origin
@@ -230,13 +235,23 @@ final class SnowScene: SKScene {
         let first = mode == nil
         mode = newMode
         look = makeLook(newMode)
-        if !first { clearAll() }
+        if !first {
+            // Never let old snow/leaf sprites acquire the new rain physics.
+            falling.forEach { $0.node.removeFromParent() }; falling.removeAll()
+            resting.forEach { $0.node.removeFromParent() }; resting.removeAll()
+            beads.forEach { $0.node.removeFromParent() }; beads.removeAll()
+            for s in [ground] + Array(windows.values) {
+                s.flakes.removeAll(); s.heights = Array(repeating: 0, count: s.heights.count)
+                s.dirty = true
+            }
+            spawnDebt = 0
+        }
     }
 
     override func update(_ currentTime: TimeInterval) {
         let raw = CGFloat(min(currentTime - lastTime, 0.05))
         lastTime = currentTime
-        guard raw > 0 else { return }
+        guard raw > 0, !isPaused else { return }
         atmosphere.tick(TimeInterval(raw))
         let dt = raw * speedFactor
         clock += dt
@@ -252,7 +267,7 @@ final class SnowScene: SKScene {
                 spawn()
             }
         }
-        if cursor { pushByCursor(raw) } else { lastMouse = nil }
+        if cursor && mode != .rain { pushByCursor(raw) } else { lastMouse = nil }
         fall(dt)
         updateBeads(dt)
         while resting.count > maxResting {
@@ -274,6 +289,7 @@ final class SnowScene: SKScene {
         node.colorBlendFactor = 1
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
+        if mode == .rain { node.zRotation = -0.04 }
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }
         field.addChild(node)
         let f = Flake(node: node)
@@ -293,7 +309,7 @@ final class SnowScene: SKScene {
             f.vx -= f.vx * k
             f.vy += (-look.fall * f.weight - f.vy) * k
             let sway = sin(clock * f.freq + f.phase) * look.sway * f.weight
-            let np = CGPoint(x: p.x + (f.vx + sway) * dt, y: p.y + f.vy * dt)
+            let np = CGPoint(x: p.x + (f.vx + sway + (mode == .rain ? -24 : 0)) * dt, y: p.y + f.vy * dt)
             f.node.position = np
             f.node.zRotation += f.spin * dt
 
@@ -502,6 +518,8 @@ final class SnowScene: SKScene {
                                    width: b.width, height: b.height)))
         }
 
+        if all.count == lastWindowRects.count && zip(all, lastWindowRects).allSatisfy({ $0.id == $1.id && $0.rect == $1.rect }) { return }
+        lastWindowRects = all
         var seen = Set<Int>()
         var newOrder: [(id: Int, rect: CGRect)] = []
         for (k, w) in all.enumerated() {
@@ -557,7 +575,7 @@ final class Overlay {
         let view = SKView(frame: CGRect(origin: .zero, size: screen.frame.size))
         view.allowsTransparency = true
         view.ignoresSiblingOrder = true
-        view.preferredFramesPerSecond = 60
+        view.preferredFramesPerSecond = min(120, max(60, screen.maximumFramesPerSecond))
         scene = SnowScene(screen: screen)
         view.presentScene(scene)
         window.contentView = view
@@ -572,6 +590,7 @@ final class Overlay {
         let effect = weather.enabled ? weather.current?.effect : (Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
         scene.setMode(effect ?? .snow)
         scene.field.isHidden = weather.enabled && effect == nil
+        scene.isPaused = d.bool(forKey: "paused")
         scene.snowing = !d.bool(forKey: "paused") && effect != nil
         scene.intensity = d.double(forKey: "intensity")
         scene.speedFactor = max(d.double(forKey: "speed"), 0.1)
@@ -615,6 +634,10 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
+                Picker("Источник погоды", selection: Binding(get: { weather.enabled }, set: { weather.setEnabled($0) })) {
+                    Text("Погода города").tag(true).disabled(weather.city == nil)
+                    Text("Своя погода").tag(false)
+                }.pickerStyle(.segmented)
                 Picker("Что падает", selection: $mode) {
                     ForEach(Mode.allCases) { Text($0.title).tag($0) }
                 }.disabled(weather.enabled)
@@ -737,7 +760,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let d = UserDefaults.standard
         overlays.forEach { $0.apply(d, weather: weather) }
         let soundMood = weather.city.map { CityMood(city: $0, code: weather.current?.weather_code) }
-        atmosphereSound.apply(enabled: weather.enabled && d.bool(forKey: "cityAtmosphere") && d.bool(forKey: "atmosphereSound") && !d.bool(forKey: "paused"),
+        atmosphereSound.apply(enabled: d.bool(forKey: "cityAtmosphere") && d.bool(forKey: "atmosphereSound") && !d.bool(forKey: "paused"),
             mood: soundMood, volume: d.double(forKey: "atmosphereVolume"), florenceBells: d.bool(forKey: "florenceBells"))
         pauseItem.state = d.bool(forKey: "paused") ? .on : .off
 

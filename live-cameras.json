@@ -46,5 +46,29 @@
     "embed": null,
     "source": "https://www.earthcam.com/world/russia/moscow/?cam=moscow_hd",
     "watch": "https://www.earthcam.com/world/russia/moscow/?cam=moscow_hd"
+  },
+  {
+    "id": "rome",
+    "title": "Прати · улица и купол Святого Петра",
+    "provider": "Webcam Italia",
+    "embed": "https://www.youtube.com/embed/gXm3PGF4z0s?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=gXm3PGF4z0s",
+    "watch": "https://www.youtube.com/watch?v=gXm3PGF4z0s"
+  },
+  {
+    "id": "rome",
+    "title": "Монте-Марио · панорама Рима",
+    "provider": "Webcam Italia",
+    "embed": "https://www.youtube.com/embed/IZtH_58-jKI?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=IZtH_58-jKI",
+    "watch": "https://www.youtube.com/watch?v=IZtH_58-jKI"
+  },
+  {
+    "id": "tokyo",
+    "title": "Пешеходный перекрёсток Сибуя",
+    "provider": "FNN Prime Online",
+    "embed": "https://www.youtube.com/embed/dfVK7ld38Ys?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=dfVK7ld38Ys",
+    "watch": "https://www.youtube.com/watch?v=dfVK7ld38Ys"
   }
 ]

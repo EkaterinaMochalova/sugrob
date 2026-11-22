@@ -3,9 +3,8 @@ const { BrowserWindow, shell, Menu } = require('electron');
 const cameras = require('./live-cameras.json');
 let current;
 function openCamera(id) {
-  const camera = cameras.find(c => c.id === id);
+  const camera = cameras.find(c => (c.id === id || c.embed === id) && c.embed);
   if (!camera) throw new Error('Camera unavailable');
-  if (!camera.embed) return shell.openExternal(camera.watch);
   if (current && !current.isDestroyed()) current.close();
   const win = new BrowserWindow({ title: camera.title, width: 1000, height: 650, minWidth: 620, minHeight: 420,
     autoHideMenuBar: false, backgroundColor: '#172b23',

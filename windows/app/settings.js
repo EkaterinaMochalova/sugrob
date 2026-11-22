@@ -1,6 +1,7 @@
 'use strict';
 const api = window.sugrob, C = window.Sugrob, $ = id => document.getElementById(id);
 let state, searchToken = 0, cameras = [];
+const cameraChoices = new Map();
 const seasonNames = { winter: 'Зима', spring: 'Весна', summer: 'Лето', autumn: 'Осень' };
 const lightNames = { day: 'День', night: 'Ночь', dawn: 'Рассвет', dusk: 'Вечер', whiteNight: 'Белая ночь' };
 function error(e) { $('error').textContent = 'Не удалось выполнить действие. Попробуйте ещё раз.'; console.error(e); }
@@ -30,17 +31,33 @@ function render(next) {
   $('city-name').textContent = s.city ? [s.city.name, s.city.admin1, s.city.country].filter(Boolean).join(', ') : 'Выбери город или оставь ручной эффект';
   const portrait = s.city && C.portrait(s.city);
   $('hero-city').textContent = s.city?.name || 'Побудем где-нибудь ещё.';
-  const camera = cameras.find(c => c.id === portrait?.portrait);
-  $('live-card').hidden = !camera;
+  const options = cameras.filter(c => c.id === portrait?.portrait && c.embed);
+  const camera = options.find(c => c.embed === cameraChoices.get(portrait?.portrait)) || options[0];
+  $('live-card').hidden = !s.city;
+  $('camera-choice').hidden = options.length < 2;
+  $('open-camera').hidden = !camera;
+  $('camera-select').replaceChildren();
+  for (const c of options) { const option = document.createElement('option'); option.value = c.embed; option.textContent = c.title; $('camera-select').append(option); }
   if (camera) {
+    $('camera-select').value = camera.embed;
     $('camera-title').textContent = camera.title; $('camera-provider').textContent = camera.provider;
-    $('open-camera').textContent = camera.embed ? 'Открыть окно ↗' : 'Смотреть в браузере ↗';
-    $('open-camera').onclick = () => api.openCamera(camera.id).catch(error);
-    $('camera-note').textContent = camera.embed ? 'Настоящий свет и время города. Звук включается в плеере.' : 'Для этой камеры доступен просмотр на сайте владельца.';
+    $('open-camera').textContent = 'Открыть окно ↗';
+    $('open-camera').onclick = () => api.openCamera(camera.embed).catch(error);
+    $('camera-note').textContent = 'Настоящий свет и время города. Звук включается в плеере.';
+  } else {
+    $('camera-title').textContent = 'Камера внутри приложения пока недоступна';
+    $('camera-provider').textContent = ''; $('camera-note').textContent = 'Погода города доступна. Новые ракурсы появятся здесь.';
   }
+  $('source-city').disabled = !s.city;
+  $('source-city').setAttribute('aria-pressed', String(s.enabled));
+  $('source-manual').setAttribute('aria-pressed', String(!s.enabled));
+  $('manual-controls').hidden = s.enabled;
+  $('manual-mode').value = s.mode;
+  $('quick-intensity').value = s.intensity; $('quick-speed').value = s.speed;
+  $('quick-pause').textContent = s.paused ? 'Продолжить эффекты' : 'Пауза эффектов';
   for (const button of $('presets').children) button.setAttribute('aria-pressed', String(button.dataset.city === portrait?.portrait));
   $('city-detail').textContent = s.city ? 'Погода выбранного города на рабочем столе.' : '';
-  $('enabled').disabled = !s.city; $('atmosphere').disabled = !s.city;
+  $('atmosphere').disabled = !s.city;
   $('strength').disabled = !s.enabled || !s.atmosphere; $('mode').disabled = s.enabled;
   $('preview').disabled = !s.enabled || !s.atmosphere || s.paused;
   const hasSound = s.city && C.mood(s.city).soundAsset;
@@ -80,3 +97,11 @@ api.cameras().then(value => { cameras = value; if (state) render(state); }).catc
 let advanced = false;
 function showAdvanced(value) { advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; }
 $('settings-tab').onclick = () => showAdvanced(!advanced);
+
+$('source-city').onclick = () => api.update({enabled:true}).catch(error);
+$('source-manual').onclick = () => api.update({enabled:false}).catch(error);
+$('manual-mode').onchange = () => api.update({mode:$('manual-mode').value}).catch(error);
+$('quick-intensity').onchange = () => api.update({intensity:Number($('quick-intensity').value)}).catch(error);
+$('quick-speed').onchange = () => api.update({speed:Number($('quick-speed').value)}).catch(error);
+$('quick-pause').onclick = () => api.update({paused:!state.settings.paused}).catch(error);
+$('camera-select').onchange = () => { const portrait = C.portrait(state.settings.city); cameraChoices.set(portrait.portrait, $('camera-select').value); render(state); };

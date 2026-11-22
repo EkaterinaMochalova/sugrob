@@ -138,11 +138,11 @@ final class WeatherStore: ObservableObject {
         refresh()
     }
 
-    func select(_ city: WeatherCity) {
+    func select(_ city: WeatherCity, enableWeather: Bool = true) {
         self.city = city
         defaults.set(try? JSONEncoder().encode(city), forKey: "weatherCity")
         resetSearch()
-        setEnabled(true)
+        setEnabled(enableWeather)
     }
 
     func resetSearch() {

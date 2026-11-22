@@ -86,3 +86,20 @@ test('Rain beads stay bounded, slide and disappear; clearing removes them',()=>{
  r.run('for(let i=0;i<60;i++)tick(.04)');assert.equal(r.run('beads.length'),0);
  r.run("beads=[{x:400,y:200,surface:{id:'a',x:0,y:200},age:0,size:2.5}]");r.clear();assert.equal(r.run('beads.length'),0);
 });
+
+test('Rain stays aligned and switching source preserves the same rain particles', () => {
+ const r=renderer(); const city=C.cities.find(c=>c.portrait==='rome');
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'rain',cursor:false}),weather:{current:null}})})`);
+ r.run('for(let i=0;i<15;i++)tick(.016)');
+ assert.ok(r.run('falling.length')>0);
+ assert.ok(r.run('falling.every(p=>p.rotation===.04 && p.vx===0)'));
+ const before=r.run('JSON.stringify(falling)');
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'rain',enabled:true,city,cursor:false}),weather:{current:{weather_code:61}}})})`);
+ assert.equal(r.run('JSON.stringify(falling)'),before);
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'snow'}),weather:{current:null}})})`);
+ assert.equal(r.run('falling.length'),0);
+});
+test('Animation advances on every display frame, including 120 Hz', () => {
+ const r=renderer();r.run(`renderState(${JSON.stringify({settings:C.normalize(),weather:{current:null}})})`);r.run('frame(1000)');const before=r.run('time');
+ r.run('frame(1000+1000/120)');assert.ok(r.run('time')>before);
+});

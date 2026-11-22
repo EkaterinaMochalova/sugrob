@@ -3,6 +3,7 @@ import WebKit
 
 struct LiveCamera: Decodable {
     let id: String
+    var key: String { embed?.absoluteString ?? watch.absoluteString }
     let title: String
     let provider: String
     let embed: URL?
@@ -13,7 +14,7 @@ struct LiveCamera: Decodable {
               let data = try? Data(contentsOf: url), let cameras = try? JSONDecoder().decode([LiveCamera].self, from: data) else { return [] }
         return cameras
     }()
-    static func forCity(_ city: WeatherCity) -> LiveCamera? { all.first { $0.id == CityPortrait.matching(city).rawValue } }
+    static func forCity(_ city: WeatherCity) -> [LiveCamera] { all.filter { $0.id == CityPortrait.matching(city).rawValue && $0.embed != nil } }
 }
 
 extension Notification.Name { static let openLiveCamera = Notification.Name("SugrobOpenLiveCamera") }
@@ -30,8 +31,8 @@ final class LiveCameraController: NSObject, WKNavigationDelegate, NSWindowDelega
     private let status = NSTextField(labelWithString: "Подключаем камеру…")
 
     func open(_ camera: LiveCamera) {
-        guard let url = camera.embed else { NSWorkspace.shared.open(camera.watch); return }
-        if self.camera?.id == camera.id, let window, window.isVisible {
+        guard let url = camera.embed else { return }
+        if self.camera?.key == camera.key, let window, window.isVisible {
             window.makeKeyAndOrderFront(nil); return
         }
         dispose()

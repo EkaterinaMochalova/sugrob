@@ -15,7 +15,7 @@ window.SugrobArt = {
     c.save(); c.translate(x, y); c.rotate(rotation); c.scale(size / 20, size / 20);
     c.globalAlpha *= alpha; c.fillStyle = tint; c.strokeStyle = tint; c.lineWidth = 1;
     c.beginPath();
-    if (kind === 'rain') { c.moveTo(0, -8); c.lineTo(-2, 8); c.stroke(); }
+    if (kind === 'rain') { const g=c.createLinearGradient(0,-8,0,8); g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(.65,tint); g.addColorStop(1,'rgba(255,255,255,0)'); c.strokeStyle=g; c.lineCap='round'; c.moveTo(0,-8); c.lineTo(0,8); c.stroke(); }
     else if (kind === 'snow') { c.arc(0, 0, 2.3, 0, Math.PI * 2); c.fill(); }
     else if (kind === 'gull') { c.moveTo(-12, 0); c.quadraticCurveTo(-6, -7, 0, 0); c.quadraticCurveTo(6, -7, 12, 0); c.stroke(); }
     else if (kind === 'glint') {

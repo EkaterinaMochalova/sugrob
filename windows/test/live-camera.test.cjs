@@ -24,10 +24,10 @@ test('Camera windows reject arbitrary IDs, isolate remote content and release ti
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../app/live-camera.cjs'),'utf8'),ctx);
  const {openCamera}=ctx.module.exports;
  assert.throws(()=>openCamera('https://untrusted.example'));
- openCamera('moscow');assert.equal(windows.length,0);assert.equal(opened[0],cameras.find(c=>c.id==='moscow').watch);
+ assert.throws(()=>openCamera('moscow'));assert.equal(windows.length,0);assert.equal(opened.length,0);
  openCamera('florence');let w=windows[0];assert.equal(w.options.webPreferences.nodeIntegration,false);assert.equal(w.options.webPreferences.sandbox,true);assert.equal(w.options.webPreferences.preload,undefined);
  assert.match(w.request.httpReferrer,/^https:\/\/local\.sugrob/);
- assert.equal(w.popup({url:'file:///etc/passwd'}).action,'deny');assert.equal(opened.length,1);
- openCamera('rome');assert.ok(w.dead);assert.equal(timers.size,1);
+ assert.equal(w.popup({url:'file:///etc/passwd'}).action,'deny');assert.equal(opened.length,0);
+ openCamera(cameras.filter(c=>c.id==='rome')[1].embed);assert.equal(windows[1].url,cameras.filter(c=>c.id==='rome')[1].embed);assert.ok(w.dead);assert.equal(timers.size,1);
  windows[1].close();assert.equal(timers.size,0);
 });

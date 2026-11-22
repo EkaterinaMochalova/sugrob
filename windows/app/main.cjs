@@ -136,10 +136,10 @@ else {
     session.defaultSession.setPermissionCheckHandler(() => false);
     ipcMain.handle('state', e => { authorized(e); return { ...snapshot(), audioLeader: e.sender === overlays.values().next().value?.webContents }; });
     ipcMain.handle('update', (e, patch) => { authorized(e, true); return update(patch); });
-    ipcMain.handle('select', (e, value, atmosphere) => {
+    ipcMain.handle('select', (e, value, atmosphere, preserveSource) => {
       authorized(e, true); const city = core.validCity(value); if (!city) throw new Error('Invalid city');
-      settings.city = city; settings.enabled = true; if (typeof atmosphere === 'boolean') settings.atmosphere = atmosphere;
-      save(); weather.select(city); broadcast(); return snapshot();
+      settings.city = city; if (!preserveSource) settings.enabled = true; if (typeof atmosphere === 'boolean') settings.atmosphere = atmosphere;
+      save(); weather.select(settings.enabled ? city : null); broadcast(); return snapshot();
     });
     ipcMain.handle('search', async (e, query) => { authorized(e, true); try { return { cities: await weather.search(query) }; } catch { return { error: 'Не удалось найти город. Проверьте интернет и повторите.' }; } });
     ipcMain.handle('cameras', e => { authorized(e, true); return cameras; });

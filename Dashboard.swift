@@ -8,6 +8,10 @@ struct DashboardView: View {
     @ObservedObject var weather: WeatherStore
     @State private var settings = false
     @State private var query = ""
+    @State private var cameraChoice = ""
+    @AppStorage("mode") private var manualMode = Mode.snow
+    @AppStorage("intensity") private var intensity = 1.0
+    @AppStorage("speed") private var speed = 1.0
     @AppStorage("cityAtmosphere") private var atmosphere = false
     @AppStorage("atmosphereSound") private var sound = false
     @AppStorage("florenceBells") private var bells = false
@@ -23,7 +27,7 @@ struct DashboardView: View {
                 VStack(spacing: 8) {
                     ForEach(destinations, id: \.rawValue) { portrait in
                         Button {
-                            atmosphere = true; weather.select(portrait.city); settings = false
+                            atmosphere = true; weather.select(portrait.city, enableWeather: weather.enabled); settings = false
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -57,10 +61,11 @@ struct DashboardView: View {
                             Button { paused.toggle() } label: { Label(paused ? "Продолжить эффекты" : "Пауза эффектов", systemImage: paused ? "play" : "pause") }
                                 .buttonStyle(.borderless).font(.system(size: 11))
                         }
+                        weatherSource
                         if let city = weather.city {
                             cityHeader(city)
                             cameraCard(city)
-                            weatherCard(city)
+                            if weather.enabled { weatherCard(city) }
                             if CityMood(city: city).soundAsset != nil { soundCard(city) }
                         } else {
                             Text("Побудем\nгде-нибудь ещё.").font(.system(size: 42, weight: .regular, design: .serif))
@@ -75,7 +80,7 @@ struct DashboardView: View {
                                 }
                                 if let message = weather.searchMessage { Text(message).font(.caption) }
                                 ForEach(weather.results) { city in
-                                    Button(city.title) { weather.select(city) }.buttonStyle(.link)
+                                    Button(city.title) { weather.select(city, enableWeather: weather.enabled) }.buttonStyle(.link)
                                 }
                                 Text("Для найденного города доступна погода. Камеры есть у городов в списке слева.").font(.caption).foregroundStyle(.secondary)
                             }.padding(.top, 8)
@@ -87,6 +92,25 @@ struct DashboardView: View {
         }
         .foregroundStyle(ink).tint(ink).background(paper).preferredColorScheme(.light)
         .frame(minWidth: 850, idealWidth: 900, minHeight: 680, idealHeight: 760)
+    }
+    private var weatherSource: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Что показывать на экране").font(.system(size: 15, weight: .medium))
+            Picker("Источник погоды", selection: Binding(get: { weather.enabled }, set: { weather.setEnabled($0) })) {
+                Text("Погода города").tag(true).disabled(weather.city == nil)
+                Text("Своя погода").tag(false)
+            }.pickerStyle(.segmented)
+            if !weather.enabled {
+                Picker("Мой эффект", selection: $manualMode) {
+                    ForEach(Mode.allCases) { Text($0.title).tag($0) }
+                }.pickerStyle(.menu)
+                Text("Эффект выбран вручную. Камеры можно смотреть независимо от него.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Text("Осадки определяются погодой выбранного города.").font(.caption).foregroundStyle(.secondary)
+            }
+            HStack { Text("Количество").font(.caption).frame(width: 80, alignment: .leading); Slider(value: $intensity, in: 0.1...3) }
+            HStack { Text("Скорость").font(.caption).frame(width: 80, alignment: .leading); Slider(value: $speed, in: 0.3...2.5) }
+        }.padding(20).background(Color.white.opacity(0.7)).cornerRadius(16)
     }
     private func cityHeader(_ city: WeatherCity) -> some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
@@ -103,7 +127,13 @@ struct DashboardView: View {
     }
     private func cameraCard(_ city: WeatherCity) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            if let camera = LiveCamera.forCity(city) {
+            let choices = LiveCamera.forCity(city)
+            if let camera = choices.first(where: { $0.key == cameraChoice }) ?? choices.first {
+                if choices.count > 1 {
+                    Picker("Ракурс", selection: Binding(get: { camera.key }, set: { cameraChoice = $0 })) {
+                        ForEach(choices, id: \.key) { Text($0.title).tag($0.key) }
+                    }.labelsHidden().foregroundStyle(ink).tint(ink).padding(8).background(paper).cornerRadius(8)
+                }
                 HStack {
                     Image(systemName: "video").font(.system(size: 24, weight: .light))
                     Spacer()
@@ -119,7 +149,7 @@ struct DashboardView: View {
                 }.buttonStyle(.plain)
                 Text(camera.embed == nil ? "Для этой камеры доступен просмотр на сайте владельца." : "Настоящий свет и время города. Звук включается в плеере.")
                     .font(.system(size: 11)).opacity(0.65)
-            } else { Text("Для этого города камера пока не добавлена.") }
+            } else { Text("Камера внутри приложения пока недоступна.").font(.system(size: 20, design: .serif)); Text("Погода города доступна. Новые ракурсы появятся здесь.").font(.caption).opacity(0.65) }
         }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
             .foregroundStyle(paper).background(ink).cornerRadius(18)
     }
@@ -128,7 +158,7 @@ struct DashboardView: View {
             HStack {
                 Label("Погода на рабочем столе", systemImage: "cloud.rain").font(.system(size: 14, weight: .medium))
                 Spacer()
-                Toggle("Погода города", isOn: Binding(get: { weather.enabled }, set: { weather.setEnabled($0) })).labelsHidden().toggleStyle(.switch)
+                Text(weather.enabled ? "АВТО" : "ВЫКЛ").font(.system(size: 10, weight: .semibold))
             }
             if let current = weather.current {
                 Text("\(Int(current.temperature_2m.rounded()))° · \(current.description)").font(.system(size: 22, weight: .light))
@@ -149,14 +179,14 @@ struct DashboardView: View {
                 Label("Звуки города", systemImage: "waveform").font(.system(size: 14, weight: .medium))
                 Spacer()
                 Toggle("Звуки города", isOn: $sound).labelsHidden().toggleStyle(.switch)
-                    .onChange(of: sound) { on in if on { atmosphere = true; weather.setEnabled(true) } }
+                    .onChange(of: sound) { on in if on { atmosphere = true } }
             }
             if sound {
                 if CityPortrait.matching(city) == .florence {
                     Picker("Запись", selection: $bells) { Text("Площадь").tag(false); Text("Колокола").tag(true) }.pickerStyle(.segmented)
                 }
                 Slider(value: $volume, in: 0...1) { Text("Громкость") }
-                if paused || !weather.enabled { Text("Звук приостановлен вместе с эффектами города.").font(.caption) }
+                if paused { Text("Звук приостановлен вместе с эффектами города.").font(.caption) }
             }
             Text("Полевая запись · отдельно от звука live-камеры").font(.system(size: 11)).foregroundStyle(.secondary)
         }.padding(20).background(Color.white.opacity(0.7)).cornerRadius(16)

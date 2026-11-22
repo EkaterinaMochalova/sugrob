@@ -17,17 +17,17 @@ function resize() {
 function updateMood() {
   if (!state) return;
   const s = state.settings;
-  const next = s.enabled && s.atmosphere && s.city ? C.mood(s.city, new Date(), state.weather.current?.weather_code) : null;
+  const next = s.atmosphere && s.city ? C.mood(s.city, new Date(), state.weather.current?.weather_code) : null;
   const key = JSON.stringify(next && { ...next, time: undefined });
   if (key !== moodKey) { moodKey = key; mood = next; motes = []; events = []; eventWait = 1; bg.clearRect(0, 0, w, h); if (mood) art.backdrop(bg, w, h, mood); }
 }
 function renderState(next) {
   state = next; const s = state.settings;
   mode = s.enabled ? C.effect(next.weather.current?.weather_code) : s.mode;
-  const key = `${mode}:${s.enabled}:${s.city?.id}`;
+  const key = String(mode);
   if (key !== modeKey) { beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; }
   updateMood();
-  sounds.sync(next.audioLeader && s.enabled && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
+  sounds.sync(next.audioLeader && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
 }
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {
@@ -46,9 +46,9 @@ api.onClear(() => { beads = []; for (const p of resting) release(p); resting = [
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
   const kind = mode, scale = .6 + Math.random() * .9;
-  falling.push({ kind, x: Math.random() * (w + 40) - 20, y: -25, vx: (Math.random() - .5) * 20,
-    vy: (kind === 'rain' ? 580 : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : 17) * scale * s.size,
-    rotation: Math.random() * 6, phase: Math.random() * 6, alpha: .45 + Math.random() * .5,
+  falling.push({ kind, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
+    vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : 17) * scale * s.size,
+    rotation: kind === 'rain' ? .04 : Math.random() * 6, phase: Math.random() * 6, alpha: kind === 'rain' ? .18 + Math.random() * .24 : .45 + Math.random() * .5,
     tint: kind === 'leaves' ? ['#d59746', '#b96d39', '#dec178'][Math.floor(Math.random() * 3)] : kind === 'petals' ? '#f4bacf' : kind === 'rain' ? '#b2c9dc' : '#f5f8ff' });
 }
 function showEvent() {
@@ -95,8 +95,8 @@ function tick(dt) {
   for (const p of resting) { const key = `${p.surface}:${Math.floor(p.x / 9)}`; piles.set(key, (piles.get(key) || 0) + 1); }
   falling = falling.filter(p => {
     const oldY = p.y;
-    if (s.cursor && Math.hypot(p.x - cursor.x, p.y - cursor.y) < 65) p.vx += Math.sign(p.x - cursor.x) * 110 * dt;
-    p.x += (p.vx + (p.kind === 'rain' ? -30 : Math.sin(time + p.phase) * 14)) * dt * s.speed;
+    if (s.cursor && p.kind !== 'rain' && Math.hypot(p.x - cursor.x, p.y - cursor.y) < 65) p.vx += Math.sign(p.x - cursor.x) * 110 * dt;
+    p.x += (p.vx + (p.kind === 'rain' ? -24 : Math.sin(time + p.phase) * 14)) * dt * s.speed;
     p.y += p.vy * dt * s.speed; if (p.kind !== 'rain') p.rotation += dt * .35;
     if (p.life !== undefined) { p.life -= dt; p.alpha = Math.min(p.alpha, Math.max(0, p.life / 3)); if (p.life <= 0) return false; }
     if (p.kind === 'rain') {
@@ -159,8 +159,8 @@ function draw() {
 }
 function frame(now) {
   requestAnimationFrame(frame);
-  if (!state || now - lastFrame < 1000 / 30) return;
-  const dt = Math.min(.06, (now - lastFrame) / 1000); lastFrame = now;
+  if (!state) { lastFrame = now; return; }
+  const dt = lastFrame ? Math.min(.05, Math.max(0, (now - lastFrame) / 1000)) : 0; lastFrame = now;
   if (!state.settings.paused) tick(dt);
   draw();
 }

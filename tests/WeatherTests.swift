@@ -96,6 +96,10 @@ final class StubProtocol: URLProtocol {
         store.resetSearch()
         try await Task.sleep(nanoseconds: 50_000_000)
         precondition(store.results.isEmpty && !store.searching && store.searchMessage == nil)
+        store.setEnabled(false)
+        store.select(cities[0], enableWeather: false)
+        precondition(!store.enabled && store.city == cities[0])
+        precondition(defaults.string(forKey: "mode") == "petals")
         print("PASS: WMO codes, geocoding, HTTP/JSON errors, persistence, recovery, cancellation, city switching, manual settings")
     }
 }
