@@ -10,6 +10,7 @@ struct DashboardView: View {
     @State private var query = ""
     @State private var cameraChoice = ""
     @State private var expanded = false
+    @AppStorage("cameraCollapsed") private var cameraCollapsed = false
     @StateObject private var cameraSession = InlineCameraSession()
     @AppStorage("mode") private var manualMode = Mode.snow
     @AppStorage("intensity") private var intensity = 1.0
@@ -70,7 +71,7 @@ struct DashboardView: View {
                         }
                         if let city = weather.city {
                             cityHeader(city)
-                            cameraCard(city, height: expanded ? max(360, geometry.size.height - 228) : max(300, min(440, geometry.size.height * 0.48)))
+                            cameraCard(city, height: expanded ? max(360, geometry.size.height - 228) : max(180, min(260, geometry.size.height * 0.30)))
                         } else {
                             Text("Побудем\nгде-нибудь ещё.").font(.system(size: 42, weight: .regular, design: .serif))
                             Text("Выбери город слева — его погода, звуки и вид из окна будут рядом.").font(.system(size: 15)).foregroundStyle(.secondary)
@@ -149,10 +150,15 @@ struct DashboardView: View {
                         }.labelsHidden()
                     } else { Text(camera.title).font(.system(size: 14)) }
                     Spacer()
-                    Button { expanded.toggle() } label: {
+                    Button(cameraCollapsed ? "Показать видео" : "Свернуть видео") {
+                        expanded = false
+                        cameraCollapsed.toggle()
+                    }.buttonStyle(.borderless).font(.system(size: 11))
+                    Button { cameraCollapsed = false; expanded.toggle() } label: {
                         Image(systemName: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                     }.help(expanded ? "Вернуться · Esc" : "Развернуть вид")
                 }
+                if !cameraCollapsed {
                 InlineCameraView(camera: camera, session: cameraSession, expanded: expanded, collapse: { expanded = false })
                     .frame(height: height).clipShape(RoundedRectangle(cornerRadius: 14))
                 HStack {
@@ -160,6 +166,7 @@ struct DashboardView: View {
                     Spacer()
                     Link(camera.provider, destination: camera.source).font(.system(size: 10))
                     Button("Обновить") { cameraSession.reload() }.font(.system(size: 11)).buttonStyle(.borderless)
+                }
                 }
             } else {
                 VStack(alignment: .leading, spacing: 10) {

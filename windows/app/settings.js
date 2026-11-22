@@ -3,6 +3,7 @@ const api = window.sugrob, C = window.Sugrob, $ = id => document.getElementById(
 let state, searchToken = 0, cameras = [];
 let selectedCamera = null, expanded = false;
 const cameraChoices = new Map();
+let cameraCollapsed = localStorage.getItem('cameraCollapsed') === 'true';
 const seasonNames = { winter: 'Зима', spring: 'Весна', summer: 'Лето', autumn: 'Осень' };
 const lightNames = { day: 'День', night: 'Ночь', dawn: 'Рассвет', dusk: 'Вечер', whiteNight: 'Белая ночь' };
 function error(e) { $('error').textContent = 'Не удалось выполнить действие. Попробуйте ещё раз.'; console.error(e); }
@@ -37,7 +38,11 @@ function render(next) {
   $('live-card').hidden = !s.city || advanced;
   $('camera-choice').hidden = options.length < 2;
   selectedCamera = camera || null;
-  $('camera-viewport').hidden = !camera;
+  $('camera-viewport').hidden = !camera || cameraCollapsed;
+  $('collapse-video').hidden = !camera;
+  $('collapse-video').textContent = cameraCollapsed ? 'Показать видео' : 'Свернуть видео';
+  $('collapse-video').setAttribute('aria-expanded',String(!cameraCollapsed));
+  document.body.classList.toggle('camera-collapsed',cameraCollapsed);
   $('expand-camera').hidden = !camera;
   $('reload-camera').hidden = !camera;
   $('camera-select').replaceChildren();
@@ -111,18 +116,20 @@ let cameraFrame;
 function syncCamera() {
   cancelAnimationFrame(cameraFrame);
   cameraFrame = requestAnimationFrame(() => {
-    if (!selectedCamera || advanced || document.hidden) { api.cameraLayout(null).catch(error); return; }
+    if (!selectedCamera || cameraCollapsed || advanced || document.hidden) { api.cameraLayout(null).catch(error); return; }
     const r = $('camera-viewport').getBoundingClientRect();
     api.cameraLayout(selectedCamera.embed,{x:r.x,y:r.y,width:r.width,height:r.height}).catch(error);
   });
 }
 function setExpanded(value) {
+  if (value && cameraCollapsed) { cameraCollapsed = false; localStorage.setItem('cameraCollapsed','false'); render(state); }
   expanded = value;
   document.body.classList.toggle('camera-expanded',value);
   $('expand-camera').textContent = value ? '↙' : '⛶';
   $('expand-camera').setAttribute('aria-label',value ? 'Вернуться к городу' : 'Развернуть вид');
   syncCamera();
 }
+$('collapse-video').onclick = () => { setExpanded(false); cameraCollapsed = !cameraCollapsed; localStorage.setItem('cameraCollapsed',String(cameraCollapsed)); render(state); };
 $('expand-camera').onclick = () => setExpanded(!expanded);
 $('reload-camera').onclick = () => api.cameraReload().catch(error);
 document.addEventListener('keydown',e => { if(e.key === 'Escape') setExpanded(false); });
