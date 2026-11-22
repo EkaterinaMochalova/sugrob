@@ -33,19 +33,19 @@
   },
   {
     "id": "athens",
-    "title": "Вид на Акрополь",
-    "provider": "SkylineWebcams / Hotel Grande Bretagne",
-    "embed": null,
-    "source": "https://www.skylinewebcams.com/en/webcam/ellada/atiki/athina/acropolis.html",
-    "watch": "https://www.skylinewebcams.com/en/webcam/ellada/atiki/athina/acropolis.html"
+    "title": "Окно в Афины · панорама города",
+    "provider": "Αλέξανδρος Τσουράπας",
+    "embed": "https://www.youtube.com/embed/3EBHoI_feh0?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=3EBHoI_feh0",
+    "watch": "https://www.youtube.com/watch?v=3EBHoI_feh0"
   },
   {
     "id": "moscow",
-    "title": "Панорама Москвы",
-    "provider": "EarthCam / Moscow Today",
-    "embed": null,
-    "source": "https://www.earthcam.com/world/russia/moscow/?cam=moscow_hd",
-    "watch": "https://www.earthcam.com/world/russia/moscow/?cam=moscow_hd"
+    "title": "Болотная площадь · сквер и канал",
+    "provider": "Bolotnaya Online",
+    "embed": "https://bolotnaya.online/ru/cameras/ul-serafimovicha/",
+    "source": "https://bolotnaya.online/ru/cameras/ul-serafimovicha/",
+    "watch": "https://bolotnaya.online/ru/cameras/ul-serafimovicha/"
   },
   {
     "id": "rome",
