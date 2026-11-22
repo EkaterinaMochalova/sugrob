@@ -80,7 +80,7 @@ func makeLook(_ mode: Mode) -> Look {
                     drag: 1.5, sway: 25, spin: 0, size: 1.5...4, bump: 0.5, settles: true, solidDrift: true)
     case .leaves:
         return Look(texture: leafTexture, aspect: 0.75, colors: [.white],
-                    alpha: 0.85...1, rate: 8, fall: 65, drag: 1.2, sway: 32, spin: 0.7, size: 22...38, bump: 0.15,
+                    alpha: 0.85...1, rate: 8, fall: 65, drag: 1.2, sway: 32, spin: 0.7, size: 24...46, bump: 0.15,
                     settles: true, solidDrift: false)
     case .rain:
         return Look(texture: dropTexture, aspect: 1.0 / 14, colors: [.white], alpha: 0.18...0.42, rate: 110, fall: 640,
@@ -288,8 +288,10 @@ final class SnowScene: SKScene {
         // Глубина: 0 — далеко (мелкая, тусклая, медленная), 1 — близко. Без неё снег выглядит плоской сеткой точек.
         let depth = CGFloat.random(in: 0...1)
         let h = (look.size.lowerBound + (look.size.upperBound - look.size.lowerBound) * depth) * sizeFactor
-        let node = SKSpriteNode(texture: mode == .leaves ? (leafTextures.randomElement() ?? look.texture) : look.texture, color: look.colors.randomElement()!,
-                                size: CGSize(width: h * look.aspect, height: h))
+        let texture = mode == .leaves ? (leafTextures.randomElement() ?? look.texture) : look.texture
+        let aspect = mode == .leaves ? texture.size().width / texture.size().height : look.aspect
+        let node = SKSpriteNode(texture: texture, color: look.colors.randomElement()!,
+                                size: CGSize(width: h * aspect, height: h))
         node.colorBlendFactor = mode == .leaves ? 0 : 1
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)

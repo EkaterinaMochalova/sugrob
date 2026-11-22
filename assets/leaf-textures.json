@@ -1,0 +1,9 @@
+{
+  "generator": "built-in image_gen",
+  "type": "AI-generated photorealistic transparent leaf sprites",
+  "assets": {
+    "leaf-ochre.png": "Birch, golden ochre and olive, mottling, torn edge and fine veins; transparent cutout",
+    "leaf-rust.png": "Oak, muted rusty brown, curled lobes, decay spots and veins; transparent cutout",
+    "leaf-olive.png": "Maple, ochre and olive, brown dry edges, small hole and papery curls; transparent cutout"
+  }
+}

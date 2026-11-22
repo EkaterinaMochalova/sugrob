@@ -33,11 +33,11 @@ for variant,(name,color,width,bend) in enumerate([('ochre',(181,126,44),57,12),(
    tip=max(0,t-.14)
    points=[(axis(t),21+204*t),(axis(t)+side*half(t)*.42,21+204*(t-.055)),(axis(tip)+side*half(tip)*.88,21+204*tip)]
    d.line(points,fill=vein,width=1)
- im.save(root/'assets'/f'leaf-{name}.png')
- shutil.copy(root/'assets'/f'leaf-{name}.png',root/'windows'/'app'/'assets'/f'leaf-{name}.png')
+ im.save(root/'assets'/f'procedural-leaf-{name}.png')
+ shutil.copy(root/'assets'/f'procedural-leaf-{name}.png',root/'windows'/'app'/'assets'/f'procedural-leaf-{name}.png')
 # Review sheet at enlarged and actual particle sizes.
 sheet=Image.new('RGB',(540,310),'#f5f3e9')
 for i,name in enumerate(['ochre','rust','olive']):
- im=Image.open(root/'assets'/f'leaf-{name}.png');sheet.paste(im,(i*180,0),im)
+ im=Image.open(root/'assets'/f'procedural-leaf-{name}.png');sheet.paste(im,(i*180,0),im)
  small=im.resize((24,32),Image.Resampling.LANCZOS);sheet.paste(small,(i*180+80,270),small)
 sheet.save('/private/tmp/sugrob-leaves-preview.png')

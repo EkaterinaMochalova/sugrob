@@ -21,7 +21,7 @@ window.SugrobArt = {
       const index = ['#d59746','#b96d39','#dec178'].indexOf(tint);
       const image = leafImages[Math.max(0,index)];
       c.scale(.35+.65*Math.abs(Math.sin(rotation*2+index)),1);
-      if (image.complete && image.naturalWidth) c.drawImage(image,-7.5,-10,15,20);
+      if (image.complete && image.naturalWidth) c.drawImage(image,-10*image.naturalWidth/image.naturalHeight,-10,20*image.naturalWidth/image.naturalHeight,20);
     }
     else if (kind === 'snow') { c.arc(0, 0, 2.3, 0, Math.PI * 2); c.fill(); }
     else if (kind === 'gull') { c.moveTo(-12, 0); c.quadraticCurveTo(-6, -7, 0, 0); c.quadraticCurveTo(6, -7, 12, 0); c.stroke(); }
