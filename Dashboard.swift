@@ -9,6 +9,8 @@ struct DashboardView: View {
     @State private var settings = false
     @State private var query = ""
     @State private var cameraChoice = ""
+    @State private var expanded = false
+    @StateObject private var cameraSession = InlineCameraSession()
     @AppStorage("mode") private var manualMode = Mode.snow
     @AppStorage("intensity") private var intensity = 1.0
     @AppStorage("speed") private var speed = 1.0
@@ -19,7 +21,9 @@ struct DashboardView: View {
     @AppStorage("paused") private var paused = false
 
     var body: some View {
+        GeometryReader { geometry in
         HStack(spacing: 0) {
+            if !expanded {
             VStack(alignment: .leading, spacing: 24) {
                 Label("сугроб", systemImage: "snowflake").font(.system(size: 24, weight: .semibold, design: .serif))
                     .padding(.top, 10)
@@ -52,6 +56,7 @@ struct DashboardView: View {
                 }.buttonStyle(.plain).font(.system(size: 12))
                 Text("Немного ближе\nк другому месту.").font(.system(size: 13, design: .serif)).opacity(0.55).lineSpacing(4)
             }.padding(24).frame(width: 230).background(Color(red: 0.90, green: 0.92, blue: 0.87))
+            }
             if settings {
                 SettingsView(weather: weather).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -63,15 +68,18 @@ struct DashboardView: View {
                             Button { paused.toggle() } label: { Label(paused ? "Продолжить эффекты" : "Пауза эффектов", systemImage: paused ? "play" : "pause") }
                                 .buttonStyle(.borderless).font(.system(size: 11))
                         }
-                        weatherSource
                         if let city = weather.city {
                             cityHeader(city)
-                            cameraCard(city)
-                            if weather.enabled { weatherCard(city) }
-                            if CityMood(city: city).soundAsset != nil { soundCard(city) }
+                            cameraCard(city, height: expanded ? max(360, geometry.size.height - 228) : max(300, min(440, geometry.size.height * 0.48)))
                         } else {
                             Text("Побудем\nгде-нибудь ещё.").font(.system(size: 42, weight: .regular, design: .serif))
                             Text("Выбери город слева — его погода, звуки и вид из окна будут рядом.").font(.system(size: 15)).foregroundStyle(.secondary)
+                        }
+                        if !expanded {
+                        weatherSource
+                        if let city = weather.city {
+                            if weather.enabled { weatherCard(city) }
+                            if CityMood(city: city).soundAsset != nil { soundCard(city) }
                         }
                         DisclosureGroup("Другой город") {
                             VStack(alignment: .leading) {
@@ -88,12 +96,15 @@ struct DashboardView: View {
                             }.padding(.top, 8)
                         }.font(.system(size: 12))
                         Link("Погода: Open-Meteo · Города: GeoNames", destination: URL(string: "https://open-meteo.com/")!).font(.system(size: 10)).opacity(0.6)
-                    }.padding(32)
+                        }
+                    }.padding(24)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .foregroundStyle(ink).tint(ink).background(paper).preferredColorScheme(.light)
-        .frame(minWidth: 850, idealWidth: 900, minHeight: 680, idealHeight: 760)
+        }
+        .frame(minWidth: 850, idealWidth: 1040, minHeight: 680, idealHeight: 820)
+        .onExitCommand { expanded = false }
     }
     private var weatherSource: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -116,44 +127,48 @@ struct DashboardView: View {
     }
     private func cityHeader(_ city: WeatherCity) -> some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
-            VStack(alignment: .leading, spacing: 12) {
-                Text(city.name).font(.system(size: city.name.count > 12 ? 36 : 48, weight: .regular, design: .serif))
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                Text(city.name).font(.system(size: 34, weight: .regular, design: .serif))
                     .lineLimit(1).minimumScaleFactor(0.7)
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(CityMood.localTime(context.date, city: city)).font(.system(size: 38, weight: .ultraLight)).monospacedDigit()
-                    Text("\(city.country ?? "") · \(CityMood(city: city, date: context.date).season.rawValue)")
-                        .font(.system(size: 12)).opacity(0.6)
+                Spacer()
+                Text(CityMood.localTime(context.date, city: city)).font(.system(size: 26, weight: .light)).monospacedDigit()
+                if let current = weather.current, weather.enabled {
+                    Text("\(Int(current.temperature_2m.rounded()))°").font(.system(size: 24, weight: .light))
                 }
             }
         }
     }
-    private func cameraCard(_ city: WeatherCity) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private func cameraCard(_ city: WeatherCity, height: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             let choices = LiveCamera.forCity(city)
             if let camera = choices.first(where: { $0.key == cameraChoice }) ?? choices.first {
-                if choices.count > 1 {
-                    Picker("Ракурс", selection: Binding(get: { camera.key }, set: { cameraChoice = $0 })) {
-                        ForEach(choices, id: \.key) { Text($0.title).tag($0.key) }
-                    }.labelsHidden().foregroundStyle(ink).tint(ink).padding(8).background(paper).cornerRadius(8)
-                }
                 HStack {
-                    Image(systemName: "video").font(.system(size: 24, weight: .light))
+                    if choices.count > 1 {
+                        Picker("Ракурс", selection: Binding(get: { camera.key }, set: { cameraChoice = $0 })) {
+                            ForEach(choices, id: \.key) { Text($0.title).tag($0.key) }
+                        }.labelsHidden()
+                    } else { Text(camera.title).font(.system(size: 14)) }
                     Spacer()
-                    Text(camera.embed == nil ? "НА САЙТЕ КАМЕРЫ" : "LIVE-КАМЕРА").font(.system(size: 9, weight: .semibold)).tracking(1.5)
+                    Button { expanded.toggle() } label: {
+                        Image(systemName: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    }.help(expanded ? "Вернуться · Esc" : "Развернуть вид")
                 }
-                Text(camera.title).font(.system(size: 23, design: .serif))
-                Text(camera.provider).font(.system(size: 11)).opacity(0.65)
-                Button {
-                    NotificationCenter.default.post(name: .openLiveCamera, object: camera)
-                } label: {
-                    HStack { Text(camera.embed == nil ? "Смотреть в браузере" : "Открыть окно"); Spacer(); Image(systemName: "arrow.up.right") }
-                        .padding(12).background(paper).foregroundStyle(ink).cornerRadius(9)
-                }.buttonStyle(.plain)
-                Text(camera.embed == nil ? "Для этой камеры доступен просмотр на сайте владельца." : "Настоящий свет и время города. Звук включается в плеере.")
-                    .font(.system(size: 11)).opacity(0.65)
-            } else { Text("Камера внутри приложения пока недоступна.").font(.system(size: 20, design: .serif)); Text("Погода города доступна. Новые ракурсы появятся здесь.").font(.caption).opacity(0.65) }
-        }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
-            .foregroundStyle(paper).background(ink).cornerRadius(18)
+                InlineCameraView(camera: camera, session: cameraSession, expanded: expanded, collapse: { expanded = false })
+                    .frame(height: height).clipShape(RoundedRectangle(cornerRadius: 14))
+                HStack {
+                    Text(cameraSession.status).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Spacer()
+                    Link(camera.provider, destination: camera.source).font(.system(size: 10))
+                    Button("Обновить") { cameraSession.reload() }.font(.system(size: 11)).buttonStyle(.borderless)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Image(systemName: "window.ceiling").font(.system(size: 30, weight: .light))
+                    Text("Здесь пока нет live-камеры").font(.system(size: 24, design: .serif))
+                    Text("Погода города доступна ниже.").font(.caption)
+                }.frame(maxWidth: .infinity, minHeight: 230, alignment: .center)
+            }
+        }.padding(14).background(Color.white.opacity(0.7)).cornerRadius(18)
     }
     private func weatherCard(_ city: WeatherCity) -> some View {
         VStack(alignment: .leading, spacing: 12) {

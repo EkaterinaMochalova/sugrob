@@ -1,7 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('sugrob', {
   cameras: () => ipcRenderer.invoke('cameras'),
-  openCamera: id => ipcRenderer.invoke('open-camera', id),
+  cameraLayout: (key,bounds) => ipcRenderer.invoke('camera-layout',key,bounds),
+  cameraReload: () => ipcRenderer.invoke('camera-reload'),
+  onCameraStatus: callback => ipcRenderer.on('camera-status',(_,value)=>callback(value)),
+  onCameraCollapse: callback => ipcRenderer.on('camera-collapse',()=>callback()),
+  onCameraLayout: callback => ipcRenderer.on('camera-layout',()=>callback()),
   state: () => ipcRenderer.invoke('state'),
   update: patch => ipcRenderer.invoke('update', patch),
   select: (city, atmosphere, preserveSource = true) => ipcRenderer.invoke('select', city, atmosphere, preserveSource),

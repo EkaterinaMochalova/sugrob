@@ -789,7 +789,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let w = NSWindow(contentViewController: NSHostingController(rootView: DashboardView(weather: weather)))
             w.title = "Сугроб"
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-            w.setContentSize(NSSize(width: 900, height: 760))
+            w.setContentSize(NSSize(width: 1040, height: 820))
             w.minSize = NSSize(width: 850, height: 680)
             w.isReleasedWhenClosed = false
             w.center()

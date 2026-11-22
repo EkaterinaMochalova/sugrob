@@ -1,6 +1,7 @@
 'use strict';
 const api = window.sugrob, C = window.Sugrob, $ = id => document.getElementById(id);
 let state, searchToken = 0, cameras = [];
+let selectedCamera = null, expanded = false;
 const cameraChoices = new Map();
 const seasonNames = { winter: 'Зима', spring: 'Весна', summer: 'Лето', autumn: 'Осень' };
 const lightNames = { day: 'День', night: 'Ночь', dawn: 'Рассвет', dusk: 'Вечер', whiteNight: 'Белая ночь' };
@@ -33,17 +34,17 @@ function render(next) {
   $('hero-city').textContent = s.city?.name || 'Побудем где-нибудь ещё.';
   const options = cameras.filter(c => c.id === portrait?.portrait && c.embed);
   const camera = options.find(c => c.embed === cameraChoices.get(portrait?.portrait)) || options[0];
-  $('live-card').hidden = !s.city;
+  $('live-card').hidden = !s.city || advanced;
   $('camera-choice').hidden = options.length < 2;
-  $('open-camera').hidden = !camera;
+  selectedCamera = camera || null;
+  $('camera-viewport').hidden = !camera;
+  $('expand-camera').hidden = !camera;
+  $('reload-camera').hidden = !camera;
   $('camera-select').replaceChildren();
   for (const c of options) { const option = document.createElement('option'); option.value = c.embed; option.textContent = c.title; $('camera-select').append(option); }
   if (camera) {
     $('camera-select').value = camera.embed;
     $('camera-title').textContent = camera.title; $('camera-provider').textContent = camera.provider;
-    $('open-camera').textContent = 'Открыть окно ↗';
-    $('open-camera').onclick = () => api.openCamera(camera.embed).catch(error);
-    $('camera-note').textContent = 'Настоящий свет и время города. Звук включается в плеере.';
   } else {
     $('camera-title').textContent = 'Камера внутри приложения пока недоступна';
     $('camera-provider').textContent = ''; $('camera-note').textContent = 'Погода города доступна. Новые ракурсы появятся здесь.';
@@ -70,7 +71,7 @@ function render(next) {
   $('weather').textContent = !s.enabled ? 'Ручной эффект включён.' : w.error || (w.current ? `${C.description(w.current.weather_code)}, ${Math.round(w.current.temperature_2m)} °C · обновлено ${new Date(w.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${w.loading ? ' · обновляем…' : ''}` : 'Загружаем погоду…');
   $('window-status').textContent = next.windowStatus;
   $('error').textContent = next.persistenceError || '';
-  clock();
+  clock(); syncCamera();
 }
 $('query').addEventListener('input', () => { searchToken++; $('results').replaceChildren(); $('search-status').textContent = ''; $('search').disabled = false; });
 $('search-form').onsubmit = async event => {
@@ -95,7 +96,7 @@ api.subscribe(render); api.state().then(render).catch(error); setInterval(clock,
 
 api.cameras().then(value => { cameras = value; if (state) render(state); }).catch(error);
 let advanced = false;
-function showAdvanced(value) { advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; }
+function showAdvanced(value) { advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; $('live-card').hidden = advanced || !state?.settings.city; setExpanded(false); syncCamera(); }
 $('settings-tab').onclick = () => showAdvanced(!advanced);
 
 $('source-city').onclick = () => api.update({enabled:true}).catch(error);
@@ -105,3 +106,29 @@ $('quick-intensity').onchange = () => api.update({intensity:Number($('quick-inte
 $('quick-speed').onchange = () => api.update({speed:Number($('quick-speed').value)}).catch(error);
 $('quick-pause').onclick = () => api.update({paused:!state.settings.paused}).catch(error);
 $('camera-select').onchange = () => { const portrait = C.portrait(state.settings.city); cameraChoices.set(portrait.portrait, $('camera-select').value); render(state); };
+
+let cameraFrame;
+function syncCamera() {
+  cancelAnimationFrame(cameraFrame);
+  cameraFrame = requestAnimationFrame(() => {
+    if (!selectedCamera || advanced || document.hidden) { api.cameraLayout(null).catch(error); return; }
+    const r = $('camera-viewport').getBoundingClientRect();
+    api.cameraLayout(selectedCamera.embed,{x:r.x,y:r.y,width:r.width,height:r.height}).catch(error);
+  });
+}
+function setExpanded(value) {
+  expanded = value;
+  document.body.classList.toggle('camera-expanded',value);
+  $('expand-camera').textContent = value ? '↙' : '⛶';
+  $('expand-camera').setAttribute('aria-label',value ? 'Вернуться к городу' : 'Развернуть вид');
+  syncCamera();
+}
+$('expand-camera').onclick = () => setExpanded(!expanded);
+$('reload-camera').onclick = () => api.cameraReload().catch(error);
+document.addEventListener('keydown',e => { if(e.key === 'Escape') setExpanded(false); });
+document.addEventListener('visibilitychange',syncCamera);
+window.addEventListener('resize',syncCamera);
+new ResizeObserver(syncCamera).observe($('camera-viewport'));
+api.onCameraStatus(value => { $('camera-note').textContent = value; });
+api.onCameraCollapse(() => setExpanded(false));
+api.onCameraLayout(syncCamera);

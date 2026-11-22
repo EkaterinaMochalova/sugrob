@@ -9,7 +9,7 @@ mkdir -p "$APP/Contents/MacOS"
 
 # Одна сборка для Apple Silicon и Intel.
 for arch in arm64 x86_64; do
-  swiftc -O -target "$arch-apple-macos13" main.swift Weather.swift Atmosphere.swift LiveCamera.swift Dashboard.swift -o "build/Sugrob-$arch"
+  swiftc -O -target "$arch-apple-macos13" main.swift Weather.swift Atmosphere.swift LiveCamera.swift InlineCamera.swift Dashboard.swift -o "build/Sugrob-$arch"
 done
 lipo -create build/Sugrob-arm64 build/Sugrob-x86_64 -output "$APP/Contents/MacOS/Sugrob"
 rm build/Sugrob-arm64 build/Sugrob-x86_64
@@ -24,7 +24,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundleName</key><string>Sugrob</string>
 	<key>CFBundleDisplayName</key><string>Сугроб</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
-	<key>CFBundleShortVersionString</key><string>1.5.4</string>
+	<key>CFBundleShortVersionString</key><string>1.6.0</string>
 	<key>CFBundleVersion</key><string>1</string>
 	<key>LSMinimumSystemVersion</key><string>13.0</string>
 	<key>LSUIElement</key><true/>
