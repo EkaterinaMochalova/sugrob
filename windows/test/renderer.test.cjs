@@ -126,7 +126,7 @@ test('Petals pass in front of windows while a small background layer settles', (
 test('Clouds drift horizontally, stay bounded, pause and disappear in clear weather', () => {
  const r=renderer();
  r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'clouds',cursor:true}),weather:{current:null}})})`);
- assert.equal(r.run('falling.length'),3);
+ assert.equal(r.run('falling.length'),5);
  const x=r.run('falling[0].x'),y=r.run('falling[0].y');
  r.run('tick(.04);draw()');
  assert.ok(r.run('falling[0].x')>x);assert.equal(r.run('falling[0].y'),y);
@@ -155,14 +155,14 @@ test('Storm produces rain and a brief bounded bolt, disables flashes and clears 
  assert.equal(r.run('bolt'),null);
 });
 
-test('Clouds stay small, subdued and varied along the top even at maximum size', () => {
+test('Clouds fill the upper band without reaching screen center at maximum size', () => {
  const r = renderer();
  r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'clouds',size:2.5}),weather:{current:null}})})`);
- assert.equal(r.run('falling.length'),3);
+ assert.equal(r.run('falling.length'),5);
  assert.equal(r.run('new Set(falling.map(p=>p.variant)).size'),3);
- assert.ok(r.run('falling.every(p=>p.y>=12 && p.y<=60 && p.size<96 && p.alpha<=.28)'));
+ assert.ok(r.run('falling.every(p=>p.y>=Math.min(150,h*.08) && p.y<=Math.min(150,h*.16) && p.size<=168 && p.alpha<=.36)'));
  r.run('for(let i=0;i<2000;i++){tick(.05);draw()}');
- assert.ok(r.run('falling.length<=5 && falling.every(p=>p.y<=60)'));
+ assert.ok(r.run('falling.length<=7 && falling.every(p=>p.y+p.size/2<h*.3)'));
 });
 
 test('Lightning button previews once in clear weather without switching source', () => {

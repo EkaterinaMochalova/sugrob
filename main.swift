@@ -99,8 +99,8 @@ let cloudTextures: [SKTexture] = ["stratus", "ragged", "cirrus"].compactMap { na
 func makeLook(_ mode: Mode) -> Look {
     switch mode {
     case .clouds:
-        return Look(texture: cloudTexture, aspect: cloudTexture.size().width / cloudTexture.size().height, colors: [.white], alpha: 0.16...0.28,
-                    rate: 0.015, fall: 0, drag: 0, sway: 0, spin: 0, size: 48...82,
+        return Look(texture: cloudTexture, aspect: cloudTexture.size().width / cloudTexture.size().height, colors: [.white], alpha: 0.22...0.36,
+                    rate: 0.025, fall: 0, drag: 0, sway: 0, spin: 0, size: 90...140,
                     bump: 0, settles: false, solidDrift: false)
     case .snow:
         // Подогнано по записи Snowhush: много мелких тусклых снежинок, частое мелкое покачивание, сплошной сугроб.
@@ -285,7 +285,7 @@ final class SnowScene: SKScene {
             spawnDebt = 0
         }
         if newMode == .clouds {
-            for i in 0..<3 { spawn(); falling.last?.node.position.x = size.width * (0.10 + CGFloat(i) * 0.35) }
+            for i in 0..<5 { spawn(); falling.last?.node.position.x = size.width * (0.04 + CGFloat(i) * 0.23) }
         }
     }
 
@@ -345,7 +345,7 @@ final class SnowScene: SKScene {
             lastScan = currentTime
             scanWindows()
         }
-        if snowing && falling.count < (mode == .clouds ? 5 : 5000) {
+        if snowing && falling.count < (mode == .clouds ? 7 : 5000) {
             spawnDebt += look.rate * intensity * size.width / 1440 * raw
             while spawnDebt >= 1 {
                 spawnDebt -= 1
@@ -368,7 +368,7 @@ final class SnowScene: SKScene {
     private func spawn() {
         // Глубина: 0 — далеко (мелкая, тусклая, медленная), 1 — близко. Без неё снег выглядит плоской сеткой точек.
         let depth = CGFloat.random(in: 0...1)
-        let h = (look.size.lowerBound + (look.size.upperBound - look.size.lowerBound) * depth) * (mode == .clouds ? min(sizeFactor, 1.15) : sizeFactor)
+        let h = (look.size.lowerBound + (look.size.upperBound - look.size.lowerBound) * depth) * (mode == .clouds ? min(sizeFactor, 1.2) : sizeFactor)
         let cloud = cloudTextures.isEmpty ? look.texture : cloudTextures[cloudIndex % cloudTextures.count]
         let texture = mode == .clouds ? cloud : mode == .leaves ? (leafTextures.randomElement() ?? look.texture) : mode == .petals ? (petalTextures.randomElement() ?? look.texture) : look.texture
         let aspect = (mode == .leaves || mode == .petals || mode == .clouds) ? texture.size().width / texture.size().height : look.aspect
@@ -378,10 +378,10 @@ final class SnowScene: SKScene {
         node.alpha = look.alpha.lowerBound + (look.alpha.upperBound - look.alpha.lowerBound) * depth
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
         if mode == .clouds {
-            node.size.width = min(290, node.size.width * .random(in: 0.85...1.1))
+            node.size.width = min(500, node.size.width * .random(in: 0.85...1.1))
             node.xScale = cloudIndex % 2 == 0 ? 1 : -1
             cloudIndex += 1
-            node.position = CGPoint(x: -node.size.width, y: size.height - .random(in: 12...60))
+            node.position = CGPoint(x: -node.size.width, y: size.height - min(150, size.height * .random(in: 0.08...0.16)))
         }
         if (mode == .rain || mode == .storm) { node.zRotation = -0.04 }
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }

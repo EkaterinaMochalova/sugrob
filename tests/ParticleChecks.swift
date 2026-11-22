@@ -30,8 +30,8 @@ extension SnowScene {
             precondition(lightning == nil && stormWait > 10)
         }
         setMode(.clouds)
-        precondition(falling.count == 3)
-        precondition(falling.allSatisfy { $0.node.position.y >= size.height - 60 && $0.node.position.y <= size.height - 12 && $0.node.size.height < 96 && $0.node.alpha <= 0.28 })
+        precondition(falling.count == 5)
+        precondition(falling.allSatisfy { $0.node.position.y >= size.height - min(150, size.height * 0.16) && $0.node.position.y <= size.height - min(150, size.height * 0.08) && $0.node.size.height <= 168 && $0.node.alpha <= 0.36 })
         let x = falling[0].node.position.x, y = falling[0].node.position.y
         fall(0.05)
         precondition(falling[0].node.position.x > x && falling[0].node.position.y == y)

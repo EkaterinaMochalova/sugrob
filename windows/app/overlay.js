@@ -27,7 +27,7 @@ function renderState(next) {
   state = next; const s = state.settings;
   mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
   const key = String(mode);
-  if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<3;i++){spawn(s);falling[falling.length-1].x=w*(.10+i*.35);} }
+  if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
   sounds.sync(next.audioLeader && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
 }
@@ -47,7 +47,7 @@ api.onPreview(() => { if (state?.settings.enabled && !state.settings.paused && m
 api.onClear(() => { beads = []; for (const p of resting) release(p); resting = []; motes = []; });
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
-  if (mode === 'clouds') { falling.push({kind:'clouds',x:-300,y:12+Math.random()*48,vx:4+Math.random()*3,size:(48+Math.random()*34)*Math.min(s.size,1.15),variant:cloudIndex++%3,stretch:.85+Math.random()*.25,rotation:0,alpha:.16+Math.random()*.12,tint:'#eeeeee'}); return; }
+  if (mode === 'clouds') { falling.push({kind:'clouds',x:-500,y:Math.min(150,h*(.08+Math.random()*.08)),vx:4+Math.random()*3,size:(90+Math.random()*50)*Math.min(s.size,1.2),variant:cloudIndex++%3,stretch:.85+Math.random()*.25,rotation:0,alpha:.22+Math.random()*.14,tint:'#eeeeee'}); return; }
   const kind = mode === 'storm' ? 'rain' : mode, scale = .6 + Math.random() * .9;
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,
@@ -109,8 +109,8 @@ function tick(dt) {
   } else { bolt = null; stormWait = 8; }
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }
   if (mode) {
-    spawnDebt += dt * (mode === 'clouds' ? .015 : (mode === 'rain' || mode === 'storm') ? 110 : 42) * s.intensity * w / 1440;
-    while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 5 : 900)) { spawn(s); spawnDebt--; }
+    spawnDebt += dt * (mode === 'clouds' ? .025 : (mode === 'rain' || mode === 'storm') ? 110 : 42) * s.intensity * w / 1440;
+    while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 7 : 900)) { spawn(s); spawnDebt--; }
     spawnDebt = Math.min(spawnDebt, 4);
   }
   const surfaces = s.onWindows ? windows : [];
