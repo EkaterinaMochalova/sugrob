@@ -160,7 +160,7 @@ else {
     if (smoke) {
       await new Promise(resolve => setTimeout(resolve, 3500));
       const result = await settingsWindow.webContents.executeJavaScript('({presets:document.querySelectorAll("#presets button").length,title:document.title})');
-      if (result.presets !== 6 || overlays.size === 0) throw new Error('Smoke test failed');
+      if (result.presets !== 8 || overlays.size === 0) throw new Error('Smoke test failed');
       console.log('SMOKE PASS: settings and overlay loaded'); app.quit();
     }
   }).catch(error => { dialog.showErrorBox('Сугроб', error.message); app.exit(1); });

@@ -2,9 +2,9 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const cameras = require('../app/live-cameras.json');
-test('Desktop platforms share six camera destinations and only official YouTube embeds', () => {
+test('Desktop platforms share the camera catalog and only official YouTube embeds', () => {
  assert.deepEqual(cameras, JSON.parse(fs.readFileSync(path.join(__dirname,'../../live-cameras.json'))));
- assert.equal(new Set(cameras.map(c=>c.id)).size,6);
+ assert.equal(new Set(cameras.map(c=>c.id)).size,7);
  for(const c of cameras) {
   assert.equal(new URL(c.watch).protocol,'https:');
   if(c.embed) {assert.equal(new URL(c.embed).hostname,'www.youtube.com'); assert.match(new URL(c.embed).pathname,/^\/embed\/[\w-]{11}$/);}

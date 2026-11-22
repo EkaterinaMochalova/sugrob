@@ -2,7 +2,7 @@ import SwiftUI
 
 private let ink = Color(red: 0.15, green: 0.23, blue: 0.20)
 private let paper = Color(red: 0.96, green: 0.95, blue: 0.91)
-private let destinations: [CityPortrait] = [.florence, .rome, .tokyo, .petersburg, .moscow, .athens]
+private let destinations: [CityPortrait] = [.florence, .rome, .tokyo, .petersburg, .moscow, .athens, .nizhny, .newyork]
 
 struct DashboardView: View {
     @ObservedObject var weather: WeatherStore
@@ -24,6 +24,7 @@ struct DashboardView: View {
                 Label("сугроб", systemImage: "snowflake").font(.system(size: 24, weight: .semibold, design: .serif))
                     .padding(.top, 10)
                 Text("ГДЕ ПОБУДЕМ?").font(.system(size: 10, weight: .semibold)).tracking(2).opacity(0.55)
+                ScrollView {
                 VStack(spacing: 8) {
                     ForEach(destinations, id: \.rawValue) { portrait in
                         Button {
@@ -44,7 +45,8 @@ struct DashboardView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-                Spacer()
+                }
+                Spacer(minLength: 0)
                 Button { settings.toggle() } label: {
                     Label(settings ? "Вернуться к городу" : "Эффекты и настройки", systemImage: settings ? "arrow.left" : "slider.horizontal.3")
                 }.buttonStyle(.plain).font(.system(size: 12))

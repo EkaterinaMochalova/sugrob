@@ -70,5 +70,21 @@
     "embed": "https://www.youtube.com/embed/dfVK7ld38Ys?autoplay=1&mute=1&playsinline=1",
     "source": "https://www.youtube.com/watch?v=dfVK7ld38Ys",
     "watch": "https://www.youtube.com/watch?v=dfVK7ld38Ys"
+  },
+  {
+    "id": "newyork",
+    "title": "Таймс-сквер · перекрёсток",
+    "provider": "EarthCam",
+    "embed": "https://www.youtube.com/embed/KHy_n-EMWY8?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=KHy_n-EMWY8",
+    "watch": "https://www.youtube.com/watch?v=KHy_n-EMWY8"
+  },
+  {
+    "id": "newyork",
+    "title": "Таймс-сквер · северный ракурс",
+    "provider": "EarthCam",
+    "embed": "https://www.youtube.com/embed/ZxCeWQ3Lcig?autoplay=1&mute=1&playsinline=1",
+    "source": "https://www.youtube.com/watch?v=ZxCeWQ3Lcig",
+    "watch": "https://www.youtube.com/watch?v=ZxCeWQ3Lcig"
   }
 ]

@@ -5,7 +5,7 @@ const cameraChoices = new Map();
 const seasonNames = { winter: 'Зима', spring: 'Весна', summer: 'Лето', autumn: 'Осень' };
 const lightNames = { day: 'День', night: 'Ночь', dawn: 'Рассвет', dusk: 'Вечер', whiteNight: 'Белая ночь' };
 function error(e) { $('error').textContent = 'Не удалось выполнить действие. Попробуйте ещё раз.'; console.error(e); }
-for (const city of C.cities.filter(city => ['moscow', 'rome', 'petersburg', 'tokyo', 'florence', 'athens'].includes(city.portrait))) {
+for (const city of C.cities.filter(city => ['moscow', 'rome', 'petersburg', 'tokyo', 'florence', 'athens', 'nizhny', 'newyork'].includes(city.portrait))) {
   const button = document.createElement('button'); button.textContent = city.name; button.dataset.city = city.portrait;
   button.onclick = () => { showAdvanced(false); api.select(city, true).catch(error); }; $('presets').append(button);
 }

@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const C = require('../app/core.js');
 const { WeatherService } = require('../app/weather.cjs');
-test('Seven city portraits, winter/summer clocks and daylight-saving time', () => {
-  assert.equal(C.cities.length, 7);
+test('Eight city portraits, winter/summer clocks and daylight-saving time', () => {
+  assert.equal(C.cities.length, 8);
   const winter = new Date('2026-01-15T12:00:00Z'), summer = new Date('2026-06-15T12:00:00Z');
-  const times = [['15:00', '15:00'], ['13:00', '14:00'], ['14:00', '15:00'], ['15:00', '15:00'], ['21:00', '21:00'], ['13:00', '14:00'], ['15:00', '15:00']];
+  const times = [['15:00', '15:00'], ['13:00', '14:00'], ['14:00', '15:00'], ['15:00', '15:00'], ['21:00', '21:00'], ['13:00', '14:00'], ['15:00', '15:00'], ['07:00', '08:00']];
   C.cities.forEach((city, i) => {
     assert.equal(C.portrait(C.validCity(city)).portrait, city.portrait);
     assert.equal(C.mood(city, winter).time, times[i][0]); assert.equal(C.mood(city, summer).time, times[i][1]);
@@ -93,4 +93,12 @@ test('Presence chooses seasonal imagery and sound is opt-in', () => {
 test('Only Florence, Rome and Tokyo have recordings, regardless of precipitation',()=>{
  const expected={florence:'florence-market',rome:'rome-pantheon',tokyo:'tokyo-street'};
  for(const city of C.cities) for(const code of [0,61,71]) assert.equal(C.mood(city,new Date(),code).soundAsset,expected[city.portrait]||null);
+});
+
+test('New York observes US daylight saving; Nizhny stays on Moscow time and both are silent',()=>{
+ const ny=C.cities.find(c=>c.portrait==='newyork'),nn=C.cities.find(c=>c.portrait==='nizhny');
+ assert.equal(C.mood(ny,new Date('2026-01-15T12:00:00Z')).time,'07:00');
+ assert.equal(C.mood(ny,new Date('2026-07-15T12:00:00Z')).time,'08:00');
+ assert.equal(C.mood(nn,new Date('2026-07-15T12:00:00Z')).time,'15:00');
+ assert.equal(C.mood(ny).soundAsset,null); assert.equal(C.mood(nn).soundAsset,null);
 });

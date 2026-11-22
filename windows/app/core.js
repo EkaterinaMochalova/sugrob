@@ -7,7 +7,8 @@
     { id: -4, name: 'Санкт-Петербург', latitude: 59.94, longitude: 30.31, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'petersburg', detail: 'Отражения воды, редкие чайки и жемчужные июньские ночи.' },
     { id: -5, name: 'Токио', latitude: 35.68, longitude: 139.69, country: 'Япония', timezone: 'Asia/Tokyo', portrait: 'tokyo', detail: 'Ветка сакуры весной, клён осенью, проходящие отблески ночью.' },
     { id: -6, name: 'Флоренция', latitude: 43.77, longitude: 11.25, country: 'Италия', timezone: 'Europe/Rome', portrait: 'florence', detail: 'Тосканская хвоя, терракотовый вечерний свет и шелест.' },
-    { id: -7, name: 'Нижний Новгород', latitude: 56.33, longitude: 44.00, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'nizhny', detail: 'Тёплые отражения, ветка из-за края и дыхание воды.' }
+    { id: -7, name: 'Нижний Новгород', latitude: 56.33, longitude: 44.00, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'nizhny', detail: 'Тёплые отражения, ветка из-за края и дыхание воды.' },
+    { id: -8, name: 'Нью-Йорк', latitude: 40.7128, longitude: -74.0060, country: 'США', timezone: 'America/New_York', portrait: 'newyork', detail: 'Погода и местное время Нью-Йорка.' }
   ];
   const defaults = { enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
     intensity: 1, speed: 1, size: 1, opacity: 0.85, strength: 0.65, sound: false, florenceBells: false, volume: 0.25, onGround: true, onWindows: true,
