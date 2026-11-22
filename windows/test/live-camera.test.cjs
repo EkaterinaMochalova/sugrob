@@ -4,9 +4,10 @@ const fs = require('node:fs'), vm = require('node:vm'), path = require('node:pat
 const cameras = require('../app/live-cameras.json');
 test('Desktop platforms share the camera catalog and official player URLs', () => {
  assert.deepEqual(cameras, JSON.parse(fs.readFileSync(path.join(__dirname,'../../live-cameras.json'))));
- assert.equal(new Set(cameras.map(c=>c.id)).size,6);
+ assert.equal(new Set(cameras.map(c=>c.id)).size,7);
  for(const c of cameras) {
   assert.equal(new URL(c.watch).protocol,'https:');
+  if(c.id==='moscow') {assert.equal(c.embed,"https://www.geocam.ru/js/player/playerjs.html?file=https://rtsp2.videocam.online/live/iCity.stream/playlist.m3u8&poster=/images/photo/ic/it/icity.webp");continue;}
   assert.equal(new URL(c.embed).hostname,'www.youtube.com'); assert.match(new URL(c.embed).pathname,/^\/embed\/[\w-]{11}$/);
  }
 });
@@ -30,5 +31,5 @@ test('Camera windows reject arbitrary IDs, isolate remote content and release ti
  assert.equal(w.popup({url:'file:///etc/passwd'}).action,'deny');assert.equal(opened.length,0);
  openCamera(cameras.filter(c=>c.id==='rome')[1].embed);assert.equal(windows[1].url,cameras.filter(c=>c.id==='rome')[1].embed);assert.ok(w.dead);assert.equal(timers.size,1);
  windows[1].close();assert.equal(timers.size,0);
- assert.throws(()=>openCamera('moscow'));assert.equal(timers.size,0);
+ openCamera('moscow');assert.equal(windows[2].url,cameras.find(c=>c.id==='moscow').embed);windows[2].close();assert.equal(timers.size,0);
 });

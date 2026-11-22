@@ -78,5 +78,13 @@
     "embed": "https://www.youtube.com/embed/ZxCeWQ3Lcig?autoplay=1&mute=1&playsinline=1",
     "source": "https://www.youtube.com/watch?v=ZxCeWQ3Lcig",
     "watch": "https://www.youtube.com/watch?v=ZxCeWQ3Lcig"
+  },
+  {
+    "id": "moscow",
+    "title": "iCity · панорама Пресненского района",
+    "provider": "GEOCAM / MR Group",
+    "embed": "https://www.geocam.ru/js/player/playerjs.html?file=https://rtsp2.videocam.online/live/iCity.stream/playlist.m3u8&poster=/images/photo/ic/it/icity.webp",
+    "source": "https://www.geocam.ru/online/icity/",
+    "watch": "https://www.geocam.ru/online/icity/"
   }
 ]
