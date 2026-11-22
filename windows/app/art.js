@@ -1,5 +1,6 @@
 'use strict';
 const leafImages = ['ochre','rust','olive'].map(name => { const image = new Image(); image.src = `assets/leaf-${name}.png`; return image; });
+const petalImages = ['blush','curled'].map(name => { const image = new Image(); image.src = `assets/petal-${name}.png`; return image; });
 window.SugrobArt = {
   rgba: (t, a) => `rgba(${t.join(',')},${a})`,
   backdrop(c, w, h, m) {
@@ -27,7 +28,7 @@ window.SugrobArt = {
     else if (kind === 'gull') { c.moveTo(-12, 0); c.quadraticCurveTo(-6, -7, 0, 0); c.quadraticCurveTo(6, -7, 12, 0); c.stroke(); }
     else if (kind === 'glint') {
       const g = c.createRadialGradient(0, 0, 0, 0, 0, 8); g.addColorStop(0, tint); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(-8, -8, 16, 16);
-    } else if (kind === 'petal' || kind === 'petals') { c.moveTo(0, -8); c.bezierCurveTo(-12, -2, -7, 12, 0, 8); c.bezierCurveTo(10, 11, 12, -3, 0, -8); c.fill(); }
+    } else if (kind === 'petal' || kind === 'petals') { const image = petalImages[tint === '#f4bacf' ? 0 : 1]; c.scale(.4+.6*Math.abs(Math.sin(rotation*2)),1); if(image.complete && image.naturalWidth) c.drawImage(image,-10*image.naturalWidth/image.naturalHeight,-10,20*image.naturalWidth/image.naturalHeight,20); }
     else { c.moveTo(-7, -8); c.quadraticCurveTo(kind === 'olive' ? -6 : -16, 10, 8, 8); c.quadraticCurveTo(kind === 'olive' ? 6 : 16, -10, -7, -8); c.fill(); }
     c.restore();
   }

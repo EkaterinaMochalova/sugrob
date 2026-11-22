@@ -1,0 +1,7 @@
+{
+  "generator": "built-in image_gen",
+  "prompts": [
+    "Photorealistic-natural. Production transparent PNG particle sprite: ONE single detached cherry blossom petal, not a whole flower. Real macro botanical photograph, very pale blush pink fading to ivory, subtle branching veins from narrow base to broad softly notched top, delicate thin translucent tissue, small natural asymmetry and gently cupped edge. Petal entire in frame, centered with generous transparent margin, broad notched tip up, narrow base down. Soft neutral diffuse light, accurate microtexture without exaggeration. Fully transparent background, no surrounding shadow or glow, no text, no other petals, no stamens, no stem, no illustration, no icon. Portrait composition.",
+    "Photorealistic-natural. A single detached cherry blossom petal for a transparent animation sprite, entire petal centered with generous empty margins. Real macro photograph. Slightly curled oblique three-quarter view with one thin edge folding inward, asymmetric cupped shape, pale ivory with a blush pink base, delicate branching veins and translucent tissue. Broad softly notched upper tip and narrow base down. No entire flower, no stem, no other objects, no illustration. Soft diffuse neutral light. Genuine transparent alpha background, clean cutout, absolutely no surrounding glow or cast shadow."
+  ]
+}

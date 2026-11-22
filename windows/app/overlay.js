@@ -49,7 +49,7 @@ function spawn(s) {
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,
     rotation: kind === 'rain' ? .04 : Math.random() * 6, phase: Math.random() * 6, alpha: kind === 'rain' ? .18 + Math.random() * .24 : .45 + Math.random() * .5,
-    tint: kind === 'leaves' ? ['#d59746', '#b96d39', '#dec178'][Math.floor(Math.random() * 3)] : kind === 'petals' ? '#f4bacf' : kind === 'rain' ? '#b2c9dc' : '#f5f8ff' });
+    tint: kind === 'leaves' ? ['#d59746', '#b96d39', '#dec178'][Math.floor(Math.random() * 3)] : kind === 'petals' ? (Math.random()<.5 ? '#f4bacf' : '#fae5ea') : kind === 'rain' ? '#b2c9dc' : '#f5f8ff' });
 }
 function showEvent() {
   if (!mood || events.length >= 2) return;
