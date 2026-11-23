@@ -866,7 +866,7 @@ struct SettingsView: View {
                 Toggle("Редкие стекающие капли", isOn: $rainGlass)
                 Button("Проверить капли") { NotificationCenter.default.post(name: .previewRainGlass, object: nil) }
                     .disabled(paused || !rainGlass || ![Mode.rain, .storm].contains(weather.enabled ? (weather.current?.effect ?? .snow) : mode))
-                Text("Во время дождя или грозы: несколько капель раз в 20–38 секунд.").font(.caption).foregroundStyle(.secondary)
+                Text("Во время дождя или грозы: мокрое стекло на 18 секунд, с перерывами.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Облака") {
                 Toggle("Перетаскивать облака", isOn: $dragClouds)

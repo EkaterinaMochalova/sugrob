@@ -234,15 +234,22 @@ test('Cloud drag releases when mouse-up occurs outside the overlay',()=>{
 test('Glass rain is sparse, bounded, stops with dry weather and freezes on pause',()=>{
  const r=renderer();
  r.run('renderState({settings:window.Sugrob.normalize({mode:"rain"}),weather:{current:null}});glass.preview()');
- assert.equal(r.run('glass.drops.length'),3);
+ assert.equal(r.run('glass.drops.length'),53);
  const y=r.run('glass.drops[0].y');r.run('for(let i=0;i<100;i++)tick(.05)');
  assert.ok(r.run('glass.drops[0].y')>y);
  r.run('state.settings.paused=true');
  const before=r.run('JSON.stringify(glass.drops)');r.run('for(let i=0;i<80;i++)frame(5000+i*16)');
  assert.equal(r.run('JSON.stringify(glass.drops)'),before);
- r.run('state.settings.paused=false;for(let i=0;i<4000;i++){tick(.05);draw();if(glass.drops.length>7)throw Error("Too many drops");if(glass.drops.some(d=>d.points.length>28))throw Error("Trail unbounded");}');
+ r.run('state.settings.paused=false;for(let i=0;i<4000;i++){tick(.05);draw();if(glass.drops.length>53)throw Error("Too many drops");if(glass.drops.some(d=>d.points.length>60))throw Error("Trail unbounded");}');
  r.run('renderState({settings:window.Sugrob.normalize({mode:"sunny"}),weather:{current:null}});glass.preview()');
  assert.equal(r.run('glass.drops.length'),0);
  r.run('renderState({settings:window.Sugrob.normalize({mode:"storm",rainGlass:false}),weather:{current:null}});glass.preview()');
  assert.equal(r.run('glass.drops.length'),0);
+});
+
+test('Wet-glass drops collect pinned beads, grow, leave fading trails and clear between episodes',()=>{
+ const r=renderer();r.run('renderState({settings:window.Sugrob.normalize({mode:"rain"}),weather:{current:null}});glass.preview();glass.drops=[glass.drop(500,100,8,true),glass.drop(501,105,3,false)];glass.drops[0].hold=0;glass.tick(.05)');
+ assert.equal(r.run('glass.drops.length'),1);assert.ok(r.run('glass.drops[0].r')>8);
+ r.run('for(let i=0;i<50;i++)glass.tick(.05)');assert.ok(r.run('glass.drops[0].points.length')>1);
+ r.run('glass.age=19;glass.wait=10;glass.tick(.05)');assert.equal(r.run('glass.drops.length'),0);
 });
