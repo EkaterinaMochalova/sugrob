@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('sugrob', {
   preview: () => ipcRenderer.invoke('preview'),
   onPreview: callback => { const listener = () => callback(); ipcRenderer.on('preview', listener); return () => ipcRenderer.removeListener('preview', listener); },
   clear: () => ipcRenderer.invoke('clear'),
+  hideToTray: () => ipcRenderer.invoke('hide-to-tray'),
   quit: () => ipcRenderer.invoke('quit'),
   subscribe: callback => { const listener = (_, state) => callback(state); ipcRenderer.on('state', listener); return () => ipcRenderer.removeListener('state', listener); },
   onEnvironment: callback => { const listener = (_, data) => callback(data); ipcRenderer.on('environment', listener); return () => ipcRenderer.removeListener('environment', listener); },

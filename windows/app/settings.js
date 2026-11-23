@@ -109,6 +109,7 @@ $('test-lightning').onclick = () => api.previewLightning().catch(error);
 $('preview').onclick = () => api.preview().catch(error);
 $('refresh').onclick = () => api.refresh().catch(error);
 $('clear').onclick = () => api.clear().catch(error);
+$('hide-to-tray').onclick = () => api.hideToTray().catch(error);
 $('quit').onclick = () => api.quit().catch(error);
 api.subscribe(render); api.state().then(render).catch(error); setInterval(clock, 60000);
 

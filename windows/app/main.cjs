@@ -71,7 +71,7 @@ function showSettings() {
   settingsWindow.on('closed', () => { inlineCamera.clear(); inlineCamera = null; settingsWindow = null; });
   settingsWindow.loadFile(path.join(__dirname, 'settings.html'));
   settingsWindow.once('ready-to-show', () => { settingsWindow.show(); broadcast(); });
-  settingsWindow.on('close', event => { if (!quitting) { event.preventDefault(); settingsWindow.hide(); } });
+  settingsWindow.on('close', event => { if (!quitting) { event.preventDefault(); app.quit(); } });
 }
 function applyWindows() {
   for (const [id, win] of overlays) {
@@ -179,6 +179,7 @@ else {
     ipcMain.handle('preview-lightning', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview-lightning'); });
     ipcMain.handle('preview', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview'); });
     ipcMain.handle('clear', e => { authorized(e, true); clear(); });
+    ipcMain.handle('hide-to-tray', e => { authorized(e, true); settingsWindow?.hide(); });
     ipcMain.handle('quit', e => { authorized(e, true); app.quit(); });
     tray = new Tray(nativeImage.createFromPath(path.join(__dirname, 'icon.png')));
     tray.on('click', showSettings); tray.on('double-click', showSettings);
