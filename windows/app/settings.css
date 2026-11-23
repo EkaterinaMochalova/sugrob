@@ -18,3 +18,5 @@ h1,#hero-clock,#presets button,button,#live-card,#city-name,select{color:var(--i
 button{background:var(--sidebar)}button:hover{filter:brightness(.97);background:var(--sidebar)}
 input[type=range],input[type=checkbox]{accent-color:var(--ink)}
 .source-tabs button[aria-pressed=true]{background:var(--ink);color:white}
+
+:root[data-theme=redleaf]{--paper:#f0eeee;--sidebar:#dcd7d7;--ink:#862f3c}

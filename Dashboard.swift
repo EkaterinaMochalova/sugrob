@@ -1,10 +1,11 @@
 import SwiftUI
 
 enum AppTheme: String, CaseIterable, Identifiable {
-    case sand, sage, blue, rocks, clouds
+    case sand, sage, redleaf, blue, rocks, clouds
     var id: String { rawValue }
     var title: String { switch self {
     case .sage: return "Лист"
+    case .redleaf: return "Л̶и̶с̶т̶"
     case .sand: return "Песок"
     case .blue: return "Туман"
     case .rocks: return "Скалы"
@@ -12,6 +13,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
     } }
     private var rgb: (UInt32, UInt32, UInt32) { switch self {
     case .sage: return (0xF5F3E9, 0xE5EADD, 0x263B32)
+    case .redleaf: return (0xF0EEEE, 0xDCD7D7, 0x862F3C)
     case .sand: return (0xFAF3E9, 0xEEDFCB, 0x594333)
     case .blue: return (0xEFF2F1, 0xDDE4E2, 0x394C48)
     case .rocks: return (0xE8E7E5, 0xCECDCA, 0x383B40)

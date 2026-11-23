@@ -34,7 +34,7 @@
       if (Number.isFinite(input[key])) s[key] = clamp(input[key], min, max);
     }
     if (['snow', 'rain', 'leaves', 'petals', 'clouds', 'storm', 'sunny'].includes(input.mode)) s.mode = input.mode;
-    if (['sage','sand','blue','rocks','clouds'].includes(input.theme)) s.theme = input.theme;
+    if (['sage','sand','redleaf','blue','rocks','clouds'].includes(input.theme)) s.theme = input.theme;
     if (input.theme === 'lavender') s.theme = 'blue';
     if (input.soundSource === 'weather') s.soundSource = 'weather';
     s.cloudLevels = [0,1,2].map(i=>Number.isFinite(input.cloudLevels?.[i]) && input.cloudLevels[i]>=0 && input.cloudLevels[i]<=1 ? input.cloudLevels[i] : -1);

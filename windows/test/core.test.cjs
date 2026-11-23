@@ -134,7 +134,7 @@ test('Weather label agrees with dry, wet and missing precipitation', () => {
 });
 
 test('Storm and palettes survive settings validation; dry weather stays clear', () => {
- for(const theme of ['sage','sand','blue','rocks','clouds']) assert.equal(C.normalize({theme,mode:'storm'}).theme,theme);
+ for(const theme of ['sage','sand','redleaf','blue','rocks','clouds']) assert.equal(C.normalize({theme,mode:'storm'}).theme,theme);
  assert.equal(C.normalize({theme:'invalid'}).theme,'sage');
  assert.equal(C.normalize({mode:'storm',lightning:false}).lightning,false);
  for(const weather_code of [95,96,97,99]) {
@@ -164,7 +164,7 @@ test('Every displayed theme survives saving; sunny remains a weather effect',()=
  const html=fs.readFileSync(path.join(__dirname,'../app/settings.html'),'utf8');
  const select=html.match(/<select id="theme">([\s\S]*?)<\/select>/)[1];
  const values=[...select.matchAll(/value="([^"]+)"/g)].map(m=>m[1]);
- assert.deepEqual(values,['sand','sage','blue','rocks','clouds']);
+ assert.deepEqual(values,['sand','sage','redleaf','blue','rocks','clouds']);
  for(const theme of values)assert.equal(C.normalize({theme}).theme,theme);
  assert.equal(C.normalize({mode:'sunny'}).mode,'sunny');
 });
