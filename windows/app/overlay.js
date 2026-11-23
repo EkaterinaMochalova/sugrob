@@ -9,6 +9,7 @@ let beads = [];
 let falling = [], resting = [], motes = [], windows = [], cursor = { x: -1000, y: -1000 };
 const sounds = new window.Soundscape();
 const sunlight = new window.Sunlight();
+const glass = new window.RainGlass();
 const photos = Object.fromEntries(['autumn','olive','pine','maple','cherry','gull'].map(name => { const image = new Image(); image.src = `assets/${name}.png`; return [name, image]; }));
 let events = [], eventWait = 1;
 let lastFrame = 0, spawnDebt = 0, moteWait = 2, time = 0, lastClock = 0;
@@ -16,6 +17,7 @@ function resize() {
   w = innerWidth; h = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
   canvas.width = Math.ceil(w * dpr); canvas.height = Math.ceil(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   background.width = w; background.height = h; moodKey = ''; resting = []; updateMood();
+  if(state)glass.configure((mode==='rain'||mode==='storm')&&state.settings.rainGlass!==false,w,h,state.settings.opacity);
 }
 function updateMood() {
   if (!state) return;
@@ -31,6 +33,7 @@ function renderState(next) {
   const key = String(mode);
   if (key !== modeKey) { finishCloudDrag(); stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
+  glass.configure((mode==='rain'||mode==='storm')&&s.rainGlass!==false,w,h,s.opacity);
   sunlight.configure(mode === 'sunny',s);
   sounds.sync(next.audioLeader && s.sound && !s.paused, C.soundTrack(s,next.weather.current), s.soundSource === 'weather' ? s.weatherVolume : s.volume, s.soundSource === 'weather' && s.lightning !== false,mode);
 }
@@ -71,7 +74,8 @@ api.onEnvironment(data => {
   });
 });
 api.onPreview(() => { if (state?.settings.enabled && !state.settings.paused && mood) { events = []; eventWait = 35; showEvent(); } });
-api.onClear(() => { beads = []; for (const p of resting) release(p); resting = []; motes = []; });
+api.onRainGlassPreview(()=>{if(!state?.settings.paused)glass.preview();});
+api.onClear(() => { glass.clear(); beads = []; for (const p of resting) release(p); resting = []; motes = []; });
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
   if (mode === 'clouds') { const variant=cloudIndex++%3,level=s.cloudLevels?.[variant]; falling.push({kind:'clouds',x:-500,y:Number.isFinite(level)&&level>=0&&level<=1?h*level:Math.min(150,h*(.08+Math.random()*.08)),vx:4+Math.random()*3,size:(90+Math.random()*50)*Math.min(s.size,1.2),variant,stretch:.85+Math.random()*.25,rotation:0,alpha:.22+Math.random()*.14,tint:'#eeeeee'}); return; }
@@ -146,7 +150,7 @@ api.onLightningPreview(() => {
   lastPreview=time; previewBolt=makeBolt(); sounds.strike();
 });
 function tick(dt) {
-  const s = state.settings; time += dt; sunlight.tick(dt);
+  const s = state.settings; time += dt; sunlight.tick(dt); glass.tick(dt);
   if(previewBolt) { previewBolt.age+=dt; if(previewBolt.age>=.65 || !s.lightning) previewBolt=null; }
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (mode === 'storm' && s.lightning !== false && !reduced) {
@@ -248,7 +252,7 @@ function draw() {
     ctx.restore();
   }
   }
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = 1; glass.draw(ctx);
 }
 function frame(now) {
   requestAnimationFrame(frame);

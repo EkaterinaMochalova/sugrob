@@ -87,3 +87,12 @@ extension SnowScene {
  }
 }
 SnowScene(screen: NSScreen.main!).checkCloudDrag()
+
+let glassCheck = RainGlassNode()
+glassCheck.configure(active: true, size: CGSize(width: 1440, height: 900), strength: 0.85)
+glassCheck.preview()
+if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { precondition(glassCheck.count == 3) }
+for _ in 0..<4000 { glassCheck.tick(0.05); precondition(glassCheck.count <= 7) }
+glassCheck.configure(active: false, size: CGSize(width: 1440, height: 900), strength: 0.85)
+glassCheck.preview();precondition(glassCheck.count == 0)
+print("PASS: glass droplets stay sparse and disappear without rain")

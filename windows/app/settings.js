@@ -68,6 +68,7 @@ function render(next) {
   $('city-detail').textContent = s.city ? 'Погода выбранного города на рабочем столе.' : '';
   $('atmosphere').disabled = !s.city;
   $('strength').disabled = !s.enabled || !s.atmosphere; $('mode').disabled = s.enabled;
+  $('test-rain-glass').disabled=s.paused||!s.rainGlass||!['rain','storm'].includes(s.enabled?C.currentEffect(next.weather.current):s.mode);
   $('test-sunlight').disabled = s.paused;
   $('test-lightning').disabled = s.paused || !s.lightning || matchMedia('(prefers-reduced-motion: reduce)').matches;
   $('preview').disabled = !s.enabled || !s.atmosphere || s.paused;
@@ -104,6 +105,7 @@ $('search-form').onsubmit = async event => {
   finally { if (token === searchToken) $('search').disabled = false; }
 };
 $('reset-clouds').onclick = () => api.resetClouds().catch(error);
+$('test-rain-glass').onclick=()=>api.previewRainGlass().catch(error);
 $('test-sunlight').onclick = () => api.previewSunlight().catch(error);
 $('test-lightning').onclick = () => api.previewLightning().catch(error);
 $('preview').onclick = () => api.preview().catch(error);

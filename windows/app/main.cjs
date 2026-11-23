@@ -173,6 +173,7 @@ else {
     });
     ipcMain.handle('reset-clouds',e=>{authorized(e,true);settings.cloudLevels=[-1,-1,-1];save();broadcast();for(const win of overlays.values())send(win,'reset-clouds');});
     ipcMain.handle('preview-sunlight' ,e=>{authorized(e,true);for(const win of overlays.values())send(win,'preview-sunlight');});
+    ipcMain.handle('preview-rain-glass',e=>{authorized(e,true);for(const win of overlays.values())send(win,'preview-rain-glass');});
     ipcMain.handle('preview-lightning', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview-lightning'); });
     ipcMain.handle('preview', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview'); });
     ipcMain.handle('clear', e => { authorized(e, true); clear(); });

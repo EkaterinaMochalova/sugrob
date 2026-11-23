@@ -17,9 +17,9 @@ function renderer() {
   const context = { document: { getElementById: canvas, createElement: canvas }, innerWidth: 1920, innerHeight: 1080,
     Soundscape: class { sync() {} strike() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
     devicePixelRatio: 1.5, addEventListener(name, fn) { handlers[name] = fn; }, requestAnimationFrame() {}, console,
-    sugrob: { cloudInteractive(v) { input.push(v); }, saveCloudLevel:async(v,y)=>{saved.push([v,y]);}, onResetClouds() {}, onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
+    sugrob: { onRainGlassPreview() {}, cloudInteractive(v) { input.push(v); }, saveCloudLevel:async(v,y)=>{saved.push([v,y]);}, onResetClouds() {}, onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
-  for (const file of ['core.js', 'art.js', 'sunlight.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
+  for (const file of ['core.js', 'art.js', 'sunlight.js', 'rain-glass.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
   return { handlers, saved, input, run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
 }
 test('Canvas renderer handles all portraits and weather modes with bounded particle counts', () => {
@@ -230,4 +230,19 @@ test('Cloud drag releases when mouse-up occurs outside the overlay',()=>{
  r.handlers.mousemove({clientX:900,clientY:600,buttons:0});
  assert.equal(r.run('cloudDrag'),null);assert.equal(r.saved.length,1);
  r.handlers.blur();assert.equal(r.input.at(-1),false);
+});
+test('Glass rain is sparse, bounded, stops with dry weather and freezes on pause',()=>{
+ const r=renderer();
+ r.run('renderState({settings:window.Sugrob.normalize({mode:"rain"}),weather:{current:null}});glass.preview()');
+ assert.equal(r.run('glass.drops.length'),3);
+ const y=r.run('glass.drops[0].y');r.run('for(let i=0;i<100;i++)tick(.05)');
+ assert.ok(r.run('glass.drops[0].y')>y);
+ r.run('state.settings.paused=true');
+ const before=r.run('JSON.stringify(glass.drops)');r.run('for(let i=0;i<80;i++)frame(5000+i*16)');
+ assert.equal(r.run('JSON.stringify(glass.drops)'),before);
+ r.run('state.settings.paused=false;for(let i=0;i<4000;i++){tick(.05);draw();if(glass.drops.length>7)throw Error("Too many drops");if(glass.drops.some(d=>d.points.length>28))throw Error("Trail unbounded");}');
+ r.run('renderState({settings:window.Sugrob.normalize({mode:"sunny"}),weather:{current:null}});glass.preview()');
+ assert.equal(r.run('glass.drops.length'),0);
+ r.run('renderState({settings:window.Sugrob.normalize({mode:"storm",rainGlass:false}),weather:{current:null}});glass.preview()');
+ assert.equal(r.run('glass.drops.length'),0);
 });

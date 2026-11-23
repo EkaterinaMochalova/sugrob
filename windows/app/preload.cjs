@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('sugrob', {
   saveCloudLevel: (variant,level) => ipcRenderer.invoke('cloud-level',variant,level),
   resetClouds: () => ipcRenderer.invoke('reset-clouds'),
   onResetClouds: callback => ipcRenderer.on('reset-clouds',()=>callback()),
+  previewRainGlass: () => ipcRenderer.invoke('preview-rain-glass'),
+  onRainGlassPreview: callback => ipcRenderer.on('preview-rain-glass',()=>callback()),
   previewSunlight: () => ipcRenderer.invoke('preview-sunlight'),
   onSunlightPreview: callback => { const listener=()=>callback();ipcRenderer.on('preview-sunlight',listener);return ()=>ipcRenderer.removeListener('preview-sunlight',listener); },
   previewLightning: () => ipcRenderer.invoke('preview-lightning'),

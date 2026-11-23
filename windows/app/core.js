@@ -11,7 +11,7 @@
     { id: -8, name: 'Нью-Йорк', latitude: 40.7128, longitude: -74.0060, country: 'США', timezone: 'America/New_York', portrait: 'newyork', detail: 'Погода и местное время Нью-Йорка.' },
     { id: -9, name: 'Ереван', latitude: 40.1872, longitude: 44.5152, country: 'Армения', timezone: 'Asia/Yerevan', portrait: 'yerevan', detail: 'Погода и местное время Еревана.' }
   ];
-  const defaults = { dragClouds: false, cloudLevels: [-1,-1,-1], sunDust: true, soundSource: 'city', weatherVolume: .25, theme: 'sage', lightning: true, enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
+  const defaults = { dragClouds: false, cloudLevels: [-1,-1,-1], sunDust: true, rainGlass: true, soundSource: 'city', weatherVolume: .25, theme: 'sage', lightning: true, enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
     intensity: 1, speed: 1, size: 1, opacity: 0.85, strength: 0.65, sound: false, florenceBells: false, volume: 0.25, onGround: true, onWindows: true,
     cursor: true, drift: 1800, hideInScreenshots: false, overFullScreen: false, openAtLogin: false };
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));

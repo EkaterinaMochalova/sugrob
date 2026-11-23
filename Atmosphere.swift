@@ -456,3 +456,78 @@ final class SunlightNode: SKNode {
         }
     }
 }
+
+// Sparse droplets on an implied pane: transparent bodies, offset rims and short wet trails.
+final class RainGlassNode: SKNode {
+    final class Drop {
+        let root = SKNode(), trail = SKShapeNode(), rim = SKShapeNode(), glint = SKShapeNode()
+        var age: CGFloat = 0
+        var point: CGPoint
+        var points: [CGPoint] = []
+        let radius: CGFloat = .random(in: 2.2...4.2)
+        let hold: CGFloat = .random(in: 0.7...2.5)
+        let life: CGFloat = .random(in: 12...19)
+        let phase: CGFloat = .random(in: 0...6.28)
+        var velocity: CGFloat = 0
+        init(point: CGPoint) { self.point = point }
+    }
+    private var drops: [Drop] = []
+    private var active = false
+    private var area = CGSize.zero
+    private var wait: CGFloat = 5
+    var count: Int { drops.count }
+    func configure(active: Bool, size: CGSize, strength: CGFloat) {
+        self.active = active
+        area = size; alpha = strength
+        if !active { clear() }
+    }
+    func clear() { drops.forEach { $0.root.removeFromParent() }; drops = []; wait = 5 }
+    func preview() {
+        guard active, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        burst(); wait = .random(in: 20...38)
+    }
+    private func burst() {
+        guard area.width > 0, area.height > 0 else { return }
+        for _ in 0..<min(3, 7 - drops.count) {
+            let d = Drop(point: CGPoint(x: area.width * .random(in: 0.1...0.9), y: area.height * .random(in: 0.45...0.93)))
+            d.trail.strokeColor = NSColor(calibratedWhite: 0.85, alpha: 0.12)
+            d.trail.lineWidth = 0.75; d.trail.lineCap = .round
+            d.rim.fillColor = NSColor(calibratedWhite: 1, alpha: 0.025)
+            d.rim.strokeColor = NSColor(calibratedWhite: 0.12, alpha: 0.19); d.rim.lineWidth = 0.7
+            d.glint.strokeColor = NSColor(calibratedWhite: 1, alpha: 0.4); d.glint.lineWidth = 0.7
+            d.glint.lineCap = .round
+            d.root.addChild(d.trail); d.root.addChild(d.rim); d.root.addChild(d.glint)
+            addChild(d.root); drops.append(d)
+        }
+    }
+    func tick(_ dt: CGFloat) {
+        guard active else { return }
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { clear(); return }
+        wait -= dt
+        if wait <= 0 { burst(); wait = .random(in: 20...38) }
+        drops.removeAll { d in
+            d.age += dt
+            if d.age > d.life || d.point.y < -12 { d.root.removeFromParent(); return true }
+            if d.age > d.hold {
+                let target: CGFloat = 28 + 30 * max(0, sin(d.age * 1.3 + d.phase))
+                d.velocity += (target - d.velocity) * min(1, dt * 1.8)
+                d.point.y -= d.velocity * dt
+                d.point.x += sin(d.age * 0.8 + d.phase) * dt * 2
+            }
+            if d.points.last.map({ hypot($0.x-d.point.x, $0.y-d.point.y) > 2 }) ?? true { d.points.append(d.point) }
+            if d.points.count > 28 { d.points.removeFirst(d.points.count - 28) }
+            let path = CGMutablePath()
+            if let first = d.points.first { path.move(to: first); d.points.dropFirst().forEach { path.addLine(to: $0) } }
+            d.trail.path = path
+            let stretch = 1 + min(0.65, d.velocity / 90)
+            let r = d.radius, p = d.point
+            d.rim.path = CGPath(ellipseIn: CGRect(x: p.x-r, y: p.y-r*stretch, width: r*2, height: r*2*stretch), transform: nil)
+            let highlight = CGMutablePath()
+            highlight.move(to: CGPoint(x: p.x-r*0.65, y: p.y-r*0.4))
+            highlight.addQuadCurve(to: CGPoint(x: p.x+r*0.25, y: p.y-r*stretch*0.7), control: CGPoint(x: p.x-r*0.5, y: p.y-r*stretch))
+            d.glint.path = highlight
+            d.root.alpha = min(1, d.age / 0.8) * min(1, max(0, (d.life-d.age)/2))
+            return false
+        }
+    }
+}

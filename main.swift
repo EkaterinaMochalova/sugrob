@@ -14,10 +14,11 @@ let defaultSettings: [String: Any] = [
     "mode": Mode.snow.rawValue, "intensity": 1.0, "speed": 1.0, "size": 1.0, "opacity": 0.9,
     "paused": false, "behindWindows": false, "overFullScreen": false, "hideInScreenshots": true,
     "onWindows": true, "onGround": true, "cursor": true, "drift": 2500.0,
-    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "sunDust": true, "dragClouds": false, "soundSource": "city",
+    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "sunDust": true, "rainGlass": true, "dragClouds": false, "soundSource": "city",
 ]
 
 extension Notification.Name {
+    static let previewRainGlass = Notification.Name("SugrobPreviewRainGlass")
     static let clearAll = Notification.Name("SugrobClearAll")
 }
 
@@ -219,6 +220,7 @@ final class RainBead {
 }
 final class SnowScene: SKScene {
     private var beads: [RainBead] = []
+    let glass = RainGlassNode()
     var intensity: CGFloat = 1, speedFactor: CGFloat = 1, sizeFactor: CGFloat = 1
     var snowing = true, cursor = true
     var maxResting = 2500
@@ -268,6 +270,7 @@ final class SnowScene: SKScene {
         isUserInteractionEnabled = true
         scaleMode = .resizeFill
         addChild(sun)
+        glass.zPosition = 50; addChild(glass)
         addChild(atmosphere)
         addChild(field)
         field.addChild(ground.shape)
@@ -381,6 +384,7 @@ final class SnowScene: SKScene {
         guard raw > 0, !isPaused else { return }
         updateCloudInput()
         sun.tick(raw)
+        glass.tick(raw)
         atmosphere.tick(TimeInterval(raw))
         updateLightning(raw)
         let dt = raw * speedFactor
@@ -637,6 +641,7 @@ final class SnowScene: SKScene {
 
     /// «Смести всё»: лежащее сдувает в одну сторону, и оно тает в воздухе.
     func clearAll() {
+        glass.clear()
         beads.forEach { $0.node.removeFromParent() }; beads = []
         let dir: CGFloat = Bool.random() ? 1 : -1
         for s in [ground] + Array(windows.values) {
@@ -788,6 +793,7 @@ final class Overlay {
             strength: d.double(forKey: "atmosphereStrength"), paused: d.bool(forKey: "paused"))
         let effect = weather.enabled ? weather.current?.effect : (Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
         scene.sun.configure(active: effect == .sunny, city: weather.city, size: scene.size, dust: d.object(forKey: "sunDust") as? Bool != false, strength: CGFloat(d.double(forKey: "opacity")))
+        scene.glass.configure(active: (effect == .rain || effect == .storm) && d.object(forKey: "rainGlass") as? Bool != false, size: scene.size, strength: CGFloat(d.double(forKey: "opacity")))
         scene.setMode(effect ?? .snow)
         scene.field.isHidden = weather.enabled && effect == nil
         if d.bool(forKey: "paused") || d.object(forKey: "lightning") as? Bool == false { scene.hideLightning() }
@@ -833,6 +839,7 @@ struct SettingsView: View {
     @AppStorage("showInDock") var showInDock = false
     @AppStorage("appTheme") var theme = AppTheme.sage
     @AppStorage("dragClouds") var dragClouds = false
+    @AppStorage("rainGlass") var rainGlass = true
     @AppStorage("sunDust") var sunDust = true
     @AppStorage("lightning") var lightning = true
     @State var openAtLogin = SMAppService.mainApp.status == .enabled
@@ -855,6 +862,12 @@ struct SettingsView: View {
                 }
             }
             Section("Звуковой фон") { SoundControls(weather: weather) }
+            Section("Дождь · капли на стекле") {
+                Toggle("Редкие стекающие капли", isOn: $rainGlass)
+                Button("Проверить капли") { NotificationCenter.default.post(name: .previewRainGlass, object: nil) }
+                    .disabled(paused || !rainGlass || ![Mode.rain, .storm].contains(weather.enabled ? (weather.current?.effect ?? .snow) : mode))
+                Text("Во время дождя или грозы: несколько капель раз в 20–38 секунд.").font(.caption).foregroundStyle(.secondary)
+            }
             Section("Облака") {
                 Toggle("Перетаскивать облака", isOn: $dragClouds)
                 Text("Зажми облако мышью и перемести. Следующее облако той же формы пойдёт на этой высоте. Вне облаков клики проходят к окнам.").font(.caption).foregroundStyle(.secondary)
@@ -960,6 +973,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         center.addObserver(forName: .resetCloudHeights, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.overlays.forEach { $0.scene.resetCloudHeights() } }
+        }
+        center.addObserver(forName: .previewRainGlass, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.overlays.filter { !$0.scene.isPaused }.forEach { $0.scene.glass.preview() } }
         }
         center.addObserver(forName: .previewSunlight, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.overlays.filter { !$0.scene.isPaused }.forEach { $0.scene.sun.preview() } }
