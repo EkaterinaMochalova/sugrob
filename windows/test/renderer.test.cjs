@@ -6,20 +6,21 @@ const path = require('node:path');
 const C = require('../app/core.js');
 function renderer() {
   let environment, clear, preview, lightningPreview;
+  const handlers = {}, saved = [], input = [];
   const drawing = new Proxy({}, { get(target, prop) {
     if (prop in target) return target[prop];
     if (String(prop).startsWith('create')) return () => ({ addColorStop() {} });
     return (...args) => { for (const value of args) if (typeof value === 'number') assert.ok(Number.isFinite(value), `Non-finite ${String(prop)} coordinate`); };
   }, set(target, prop, value) { target[prop] = value; return true; } });
-  const canvas = () => ({ getContext: () => drawing });
+  const canvas = () => ({ getContext: () => drawing, setPointerCapture() {} });
   const initial = { settings: C.normalize(), weather: { current: null } };
   const context = { document: { getElementById: canvas, createElement: canvas }, innerWidth: 1920, innerHeight: 1080,
     Soundscape: class { sync() {} strike() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
-    devicePixelRatio: 1.5, addEventListener() {}, requestAnimationFrame() {}, console,
-    sugrob: { onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
+    devicePixelRatio: 1.5, addEventListener(name, fn) { handlers[name] = fn; }, requestAnimationFrame() {}, console,
+    sugrob: { cloudInteractive(v) { input.push(v); }, saveCloudLevel:async(v,y)=>{saved.push([v,y]);}, onResetClouds() {}, onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
   for (const file of ['core.js', 'art.js', 'sunlight.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
-  return { run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
+  return { handlers, saved, input, run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
 }
 test('Canvas renderer handles all portraits and weather modes with bounded particle counts', () => {
   const r = renderer();
@@ -200,4 +201,23 @@ test('Sunlight automatic dust is daytime only and respects switch',()=>{
  r.run("C.mood=()=>({light:'night'});sunlight.wait=0;sunlight.tick(1)");assert.equal(r.run('sunlight.age'),-1);
  r.run("C.mood=()=>({light:'day'});sunlight.tick(1)");assert.equal(r.run('sunlight.age'),0);
  r.run('sunlight.tick(21);sunlight.settings.sunDust=false;sunlight.wait=0;sunlight.tick(1)');assert.equal(r.run('sunlight.age'),-1);
+});
+
+test('Cloud drag preserves grab offset, saves height, restores click-through and inherits height',()=>{
+ const r=renderer();
+ r.run('renderState({settings:window.Sugrob.normalize({mode:"clouds",dragClouds:true}),weather:{current:null}})');
+ const p=JSON.parse(r.run('JSON.stringify(falling[2])'));
+ r.handlers.pointerdown({button:0,clientX:p.x+5,clientY:p.y+5,pointerId:1,preventDefault(){}});
+ assert.equal(r.run('cloudDrag.cloud===falling[2]'),true);
+ r.handlers.pointermove({clientX:800,clientY:545});
+ assert.equal(r.run('falling[2].y'),540);
+ r.run('tick(.04)');assert.equal(r.run('falling[2].x'),795);
+ r.handlers.pointerup();
+ assert.deepEqual(r.saved,[[p.variant,.5]]);
+ r.run('state.settings.cloudLevels[2]=.5;cloudIndex=2;spawn(state.settings)');
+ assert.equal(r.run('falling.at(-1).y'),540);
+ r.handlers.pointermove({clientX:1900,clientY:1000});
+ assert.equal(r.input.at(-1),false);
+ r.run('state.settings.dragClouds=false');
+ assert.equal(r.run('cloudAt(falling[2].x,falling[2].y)'),null);
 });

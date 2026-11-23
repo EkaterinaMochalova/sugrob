@@ -66,3 +66,24 @@ light.configure(active: false, city: nil, size: CGSize(width: 1440, height: 900)
 light.preview(); light.tick(8)
 precondition(!light.isHidden && light.children.suffix(32).allSatisfy { $0.alpha == 0 })
 print("PASS: sunlight preview expires and dust respects toggle")
+
+extension SnowScene {
+ func checkCloudDrag() {
+  let previous = UserDefaults.standard.object(forKey: "cloudLevels")
+  defer { if let previous { UserDefaults.standard.set(previous, forKey: "cloudLevels") } else { UserDefaults.standard.removeObject(forKey: "cloudLevels") } }
+  setMode(.clouds); dragClouds = true
+  let f = falling[2]
+  precondition(cloudAt(f.node.position) != nil)
+  draggedCloud = f; cloudOffset = CGPoint(x: 5, y: 5)
+  moveCloud(CGPoint(x: 805, y: size.height * 0.5 + 5))
+  precondition(f.node.position.x == 800)
+  finishCloudDrag()
+  let variant = f.node.userData!["cloudVariant"] as! Int
+  cloudIndex = variant; spawn()
+  precondition(abs(falling.last!.node.position.y - size.height * 0.5) < 0.01)
+  dragClouds = false; precondition(cloudAt(f.node.position) == nil)
+  resetCloudHeights(); precondition(UserDefaults.standard.object(forKey: "cloudLevels") == nil)
+  print("PASS: cloud dragging preserves offsets, persists height and resets")
+ }
+}
+SnowScene(screen: NSScreen.main!).checkCloudDrag()

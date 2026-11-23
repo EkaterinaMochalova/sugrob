@@ -14,7 +14,7 @@ let defaultSettings: [String: Any] = [
     "mode": Mode.snow.rawValue, "intensity": 1.0, "speed": 1.0, "size": 1.0, "opacity": 0.9,
     "paused": false, "behindWindows": false, "overFullScreen": false, "hideInScreenshots": true,
     "onWindows": true, "onGround": true, "cursor": true, "drift": 2500.0,
-    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "sunDust": true, "soundSource": "city",
+    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "sunDust": true, "dragClouds": false, "soundSource": "city",
 ]
 
 extension Notification.Name {
@@ -243,6 +243,9 @@ final class SnowScene: SKScene {
     private var lightning: SKShapeNode?
     private var lastLightningPreview: TimeInterval = -100
     private var lightningAge: CGFloat = 0
+    var dragClouds = false { didSet { if !dragClouds { finishCloudDrag() }; updateCloudInput() } }
+    private var draggedCloud: Flake?
+    private var cloudOffset = CGPoint.zero
     private var cloudIndex = 0
     private var mode: Mode?
     private var look = makeLook(.snow)
@@ -262,6 +265,7 @@ final class SnowScene: SKScene {
         ground = Surface(x0: 0, top: 0, width: screen.frame.width, maxHeight: 24)
         super.init(size: screen.frame.size)
         backgroundColor = .clear
+        isUserInteractionEnabled = true
         scaleMode = .resizeFill
         addChild(sun)
         addChild(atmosphere)
@@ -273,6 +277,7 @@ final class SnowScene: SKScene {
 
     func setMode(_ newMode: Mode) {
         guard newMode != mode else { return }
+        finishCloudDrag()
         let first = mode == nil
         mode = newMode
         lightning?.removeFromParent(); lightning = nil; stormWait = 8
@@ -374,6 +379,7 @@ final class SnowScene: SKScene {
         let raw = CGFloat(min(currentTime - lastTime, 0.05))
         lastTime = currentTime
         guard raw > 0, !isPaused else { return }
+        updateCloudInput()
         sun.tick(raw)
         atmosphere.tick(TimeInterval(raw))
         updateLightning(raw)
@@ -404,6 +410,47 @@ final class SnowScene: SKScene {
         }
     }
 
+    private func cloudAt(_ point: CGPoint) -> Flake? {
+        guard mode == .clouds, dragClouds, !isPaused else { return nil }
+        return falling.reversed().first { f in
+            let dx = (point.x - f.node.position.x) / max(1, f.node.size.width * 0.42)
+            let dy = (point.y - f.node.position.y) / max(1, f.node.size.height * 0.34)
+            return dx*dx + dy*dy <= 1
+        }
+    }
+    override func mouseDown(with event: NSEvent) {
+        let point = event.location(in: self)
+        guard let f = cloudAt(point) else { return }
+        draggedCloud = f
+        cloudOffset = CGPoint(x: point.x - f.node.position.x, y: point.y - f.node.position.y)
+    }
+    override func mouseDragged(with event: NSEvent) { moveCloud(event.location(in: self)) }
+    override func mouseUp(with event: NSEvent) { moveCloud(event.location(in: self)); finishCloudDrag(); updateCloudInput() }
+    private func moveCloud(_ point: CGPoint) {
+        guard let f = draggedCloud else { return }
+        f.node.position = CGPoint(x: min(size.width - 10, max(10, point.x - cloudOffset.x)), y: min(size.height - 10, max(10, point.y - cloudOffset.y)))
+    }
+    private func finishCloudDrag() {
+        guard let f = draggedCloud else { return }
+        draggedCloud = nil
+        let variant = f.node.userData?["cloudVariant"] as? Int ?? 0
+        var levels = UserDefaults.standard.array(forKey: "cloudLevels") as? [Double] ?? [-1, -1, -1]
+        if levels.count != 3 { levels = [-1, -1, -1] }
+        levels[variant] = Double(1 - f.node.position.y / max(1, size.height))
+        UserDefaults.standard.set(levels, forKey: "cloudLevels")
+    }
+    private func updateCloudInput() {
+        let p = NSEvent.mouseLocation
+        let local = CGPoint(x: p.x - origin.x, y: p.y - origin.y)
+        if draggedCloud != nil && NSEvent.pressedMouseButtons & 1 == 0 { finishCloudDrag() }
+        view?.window?.ignoresMouseEvents = !(draggedCloud != nil || cloudAt(local) != nil)
+    }
+    func resetCloudHeights() {
+        finishCloudDrag()
+        UserDefaults.standard.removeObject(forKey: "cloudLevels")
+        for f in falling where mode == .clouds { f.node.position.y = size.height - min(150, size.height * .random(in: 0.08...0.16)) }
+    }
+
     private func spawn() {
         // Глубина: 0 — далеко (мелкая, тусклая, медленная), 1 — близко. Без неё снег выглядит плоской сеткой точек.
         let depth = CGFloat.random(in: 0...1)
@@ -418,9 +465,13 @@ final class SnowScene: SKScene {
         node.position = CGPoint(x: .random(in: -40...(size.width + 40)), y: size.height + h)
         if mode == .clouds {
             node.size.width = min(500, node.size.width * .random(in: 0.85...1.1))
+            node.userData = ["cloudVariant": cloudIndex % 3]
             node.xScale = cloudIndex % 2 == 0 ? 1 : -1
             cloudIndex += 1
-            node.position = CGPoint(x: -node.size.width, y: size.height - min(150, size.height * .random(in: 0.08...0.16)))
+            let levels = UserDefaults.standard.array(forKey: "cloudLevels") as? [Double] ?? [-1, -1, -1]
+            let variant = (cloudIndex - 1) % 3
+            let level = levels.count == 3 ? levels[variant] : -1
+            node.position = CGPoint(x: -node.size.width, y: level.isFinite && level >= 0 && level <= 1 ? size.height * (1 - level) : size.height - min(150, size.height * .random(in: 0.08...0.16)))
         }
         if (mode == .rain || mode == .storm) { node.zRotation = -0.04 }
         if look.spin > 0 { node.zRotation = .random(in: 0...(2 * .pi)) }
@@ -439,6 +490,7 @@ final class SnowScene: SKScene {
             let f = falling[i]
             let p = f.node.position
             if mode == .clouds {
+                if f === draggedCloud { i += 1; continue }
                 f.node.position.x += dt * (4 + f.weight * 3)
                 if f.node.position.x > size.width + f.node.size.width {
                     f.node.removeFromParent(); falling.remove(at: i)
@@ -703,6 +755,10 @@ final class SnowScene: SKScene {
 
 // MARK: - Прозрачное окно поверх экрана, сквозь которое проходят клики
 
+final class CloudOverlayView: SKView {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 final class Overlay {
     let window: NSWindow
     let scene: SnowScene
@@ -715,7 +771,7 @@ final class Overlay {
         window.ignoresMouseEvents = true
         window.isReleasedWhenClosed = false
         window.setFrame(screen.frame, display: false)
-        let view = SKView(frame: CGRect(origin: .zero, size: screen.frame.size))
+        let view = CloudOverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
         view.allowsTransparency = true
         view.ignoresSiblingOrder = true
         view.preferredFramesPerSecond = min(120, max(60, screen.maximumFramesPerSecond))
@@ -744,6 +800,7 @@ final class Overlay {
         scene.onWindows = d.bool(forKey: "onWindows")
         scene.onGround = d.bool(forKey: "onGround")
         scene.cursor = d.bool(forKey: "cursor")
+        scene.dragClouds = d.bool(forKey: "dragClouds") && !d.bool(forKey: "paused")
         scene.maxResting = Int(d.double(forKey: "drift"))
 
         let behind = d.bool(forKey: "behindWindows")
@@ -775,6 +832,7 @@ struct SettingsView: View {
     @AppStorage("showInMenuBar") var showInMenuBar = true
     @AppStorage("showInDock") var showInDock = false
     @AppStorage("appTheme") var theme = AppTheme.sage
+    @AppStorage("dragClouds") var dragClouds = false
     @AppStorage("sunDust") var sunDust = true
     @AppStorage("lightning") var lightning = true
     @State var openAtLogin = SMAppService.mainApp.status == .enabled
@@ -797,6 +855,11 @@ struct SettingsView: View {
                 }
             }
             Section("Звуковой фон") { SoundControls(weather: weather) }
+            Section("Облака") {
+                Toggle("Перетаскивать облака", isOn: $dragClouds)
+                Text("Зажми облако мышью и перемести. Следующее облако той же формы пойдёт на этой высоте. Вне облаков клики проходят к окнам.").font(.caption).foregroundStyle(.secondary)
+                Button("Вернуть облака наверх") { NotificationCenter.default.post(name: .resetCloudHeights, object: nil) }
+            }
             Section("Ясно · солнечный свет") {
                 Toggle("Пыль в лучах", isOn: $sunDust)
                 Button("Приоткрыть окно · тест") { NotificationCenter.default.post(name: .previewSunlight, object: nil) }.disabled(paused)
@@ -894,6 +957,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         center.addObserver(forName: .clearAll, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.clearAll() }
+        }
+        center.addObserver(forName: .resetCloudHeights, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.overlays.forEach { $0.scene.resetCloudHeights() } }
         }
         center.addObserver(forName: .previewSunlight, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.overlays.filter { !$0.scene.isPaused }.forEach { $0.scene.sun.preview() } }

@@ -73,6 +73,7 @@ function showSettings() {
 }
 function applyWindows() {
   for (const [id, win] of overlays) {
+    if(!settings.dragClouds || settings.paused || (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)!=='clouds') win.setIgnoreMouseEvents(true,{forward:true});
     win.setContentProtection(settings.hideInScreenshots);
     win.setAlwaysOnTop(true, 'screen-saver');
     const display = screen.getAllDisplays().find(d => d.id === id);
@@ -90,7 +91,7 @@ function rebuild() {
     const win = new BrowserWindow({ ...display.bounds, frame: false, transparent: true, backgroundColor: '#00000000',
       hasShadow: false, resizable: false, movable: false, focusable: false, skipTaskbar: true,
       fullscreenable: false, show: false, webPreferences: preferences() });
-    win.setIgnoreMouseEvents(true); win.setAlwaysOnTop(true, 'screen-saver'); secure(win);
+    win.setIgnoreMouseEvents(true,{forward:true}); win.setAlwaysOnTop(true, 'screen-saver'); secure(win);
     overlays.set(display.id, win);
     win.loadFile(path.join(__dirname, 'overlay.html'));
     win.once('ready-to-show', () => { applyWindows(); broadcast(); environment(); });
@@ -154,7 +155,19 @@ else {
     ipcMain.handle('camera-layout', (e, key, bounds) => { authorized(e, true); if(key === null) inlineCamera?.clear(); else inlineCamera?.show(key,bounds); });
     ipcMain.handle('camera-reload', e => { authorized(e, true); inlineCamera?.reload(); });
     ipcMain.handle('refresh', e => { authorized(e, true); void weather.refresh(); });
-    ipcMain.handle('preview-sunlight',e=>{authorized(e,true);for(const win of overlays.values())send(win,'preview-sunlight');});
+    ipcMain.on('cloud-interactive',(e,value)=>{
+      authorized(e);
+      const win=[...overlays.values()].find(w=>w.webContents===e.sender);
+      const allowed=settings.dragClouds&&!settings.paused&&(settings.enabled?core.currentEffect(weather.state.current):settings.mode)==='clouds';
+      win?.setIgnoreMouseEvents(!(allowed&&value===true),{forward:true});
+    });
+    ipcMain.handle('cloud-level',(e,variant,level)=>{
+      authorized(e);
+      if(!settings.dragClouds || !Number.isInteger(variant)||variant<0||variant>2||!Number.isFinite(level)||level<0||level>1) return;
+      settings.cloudLevels[variant]=level;save();broadcast();
+    });
+    ipcMain.handle('reset-clouds',e=>{authorized(e,true);settings.cloudLevels=[-1,-1,-1];save();broadcast();for(const win of overlays.values())send(win,'reset-clouds');});
+    ipcMain.handle('preview-sunlight' ,e=>{authorized(e,true);for(const win of overlays.values())send(win,'preview-sunlight');});
     ipcMain.handle('preview-lightning', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview-lightning'); });
     ipcMain.handle('preview', e => { authorized(e, true); for (const win of overlays.values()) send(win, 'preview'); });
     ipcMain.handle('clear', e => { authorized(e, true); clear(); });

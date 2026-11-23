@@ -3,7 +3,7 @@ const C = window.Sugrob, art = window.SugrobArt, api = window.sugrob;
 const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
 const background = document.createElement('canvas'), bg = background.getContext('2d');
 let w = 1, h = 1, dpr = 1, state, mode = 'snow', mood, moodKey = '', modeKey = '', ground = 0;
-let cloudIndex = 0;
+let cloudIndex = 0, cloudDrag = null, cloudInput = false;
 let stormWait = 8, bolt = null, previewBolt = null, lastPreview = -100;
 let beads = [];
 let falling = [], resting = [], motes = [], windows = [], cursor = { x: -1000, y: -1000 };
@@ -26,13 +26,26 @@ function updateMood() {
 }
 function renderState(next) {
   state = next; const s = state.settings;
+  if(!s.dragClouds || s.paused) finishCloudDrag();
   mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
   const key = String(mode);
-  if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
+  if (key !== modeKey) { finishCloudDrag(); stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
   sunlight.configure(mode === 'sunny',s);
   sounds.sync(next.audioLeader && s.sound && !s.paused, C.soundTrack(s,next.weather.current), s.soundSource === 'weather' ? s.weatherVolume : s.volume, s.soundSource === 'weather' && s.lightning !== false,mode);
 }
+function cloudAt(x,y) {
+ if(!state?.settings.dragClouds||state.settings.paused||mode!=='clouds')return null;
+ return [...falling].reverse().find(p=>{if(p.kind!=='clouds')return false;const aspect=p.variant===1?2:3;return ((x-p.x)/(p.size*aspect*p.stretch*.42))**2+((y-p.y)/(p.size*.34))**2<=1;})||null;
+}
+function cloudHitMode(){const next=!!cloudDrag||!!cloudAt(cursor.x,cursor.y);if(next!==cloudInput){cloudInput=next;api.cloudInteractive(next);}}
+function finishCloudDrag(){if(!cloudDrag)return;const p=cloudDrag.cloud;cloudDrag=null;api.saveCloudLevel(p.variant,C.clamp(p.y/h,0,1)).catch(()=>{});}
+addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=cloudAt(e.clientX,e.clientY);if(!p)return;cloudDrag={cloud:p,dx:e.clientX-p.x,dy:e.clientY-p.y};canvas.setPointerCapture(e.pointerId);e.preventDefault();});
+addEventListener('pointermove',e=>{cursor={x:e.clientX,y:e.clientY};if(cloudDrag){const p=cloudDrag.cloud;p.x=C.clamp(e.clientX-cloudDrag.dx,10,w-10);p.y=C.clamp(e.clientY-cloudDrag.dy,10,h-10);}cloudHitMode();});
+addEventListener('pointerup',()=>{finishCloudDrag();cloudHitMode();});
+addEventListener('pointercancel',()=>{finishCloudDrag();cloudHitMode();});
+addEventListener('blur',()=>{finishCloudDrag();if(cloudInput){cloudInput=false;api.cloudInteractive(false);}});
+api.onResetClouds(()=>{cloudDrag=null;for(const p of falling)if(p.kind==='clouds')p.y=Math.min(150,h*(.08+Math.random()*.08));cloudHitMode();});
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {
   cursor = data.cursor; ground = data.ground;
@@ -49,7 +62,7 @@ api.onPreview(() => { if (state?.settings.enabled && !state.settings.paused && m
 api.onClear(() => { beads = []; for (const p of resting) release(p); resting = []; motes = []; });
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
-  if (mode === 'clouds') { falling.push({kind:'clouds',x:-500,y:Math.min(150,h*(.08+Math.random()*.08)),vx:4+Math.random()*3,size:(90+Math.random()*50)*Math.min(s.size,1.2),variant:cloudIndex++%3,stretch:.85+Math.random()*.25,rotation:0,alpha:.22+Math.random()*.14,tint:'#eeeeee'}); return; }
+  if (mode === 'clouds') { const variant=cloudIndex++%3,level=s.cloudLevels?.[variant]; falling.push({kind:'clouds',x:-500,y:Number.isFinite(level)&&level>=0&&level<=1?h*level:Math.min(150,h*(.08+Math.random()*.08)),vx:4+Math.random()*3,size:(90+Math.random()*50)*Math.min(s.size,1.2),variant,stretch:.85+Math.random()*.25,rotation:0,alpha:.22+Math.random()*.14,tint:'#eeeeee'}); return; }
   const kind = mode === 'storm' ? 'rain' : mode, scale = .6 + Math.random() * .9;
   falling.push({ kind, collectsOnWindows: Math.random() < .15, x: Math.random() * (w + 40) - 20, y: -25, vx: kind === 'rain' ? 0 : (Math.random() - .5) * 20,
     vy: (kind === 'rain' ? 640 * scale : 28 + Math.random() * 40), size: (kind === 'snow' ? 12 : kind === 'leaves' ? 30 : 17) * scale * s.size,
@@ -143,7 +156,7 @@ function tick(dt) {
   const piles = new Map();
   for (const p of resting) { const key = `${p.surface}:${Math.floor(p.x / 9)}`; piles.set(key, (piles.get(key) || 0) + 1); }
   falling = falling.filter(p => {
-    if(p.kind === 'clouds'){p.x+=p.vx*dt*s.speed;return p.x<w+p.size*3;}
+    if(p.kind === 'clouds'){if(p===cloudDrag?.cloud)return true;p.x+=p.vx*dt*s.speed;return p.x<w+p.size*3;}
     const oldY = p.y;
     if (s.cursor && p.kind !== 'rain' && Math.hypot(p.x - cursor.x, p.y - cursor.y) < 65) p.vx += Math.sign(p.x - cursor.x) * 110 * dt;
     p.x += (p.vx + (p.kind === 'rain' ? -24 : Math.sin(time + p.phase) * 14)) * dt * s.speed;
@@ -225,6 +238,7 @@ function frame(now) {
   if (!state) { lastFrame = now; return; }
   const dt = lastFrame ? Math.min(.05, Math.max(0, (now - lastFrame) / 1000)) : 0; lastFrame = now;
   if (!state.settings.paused) tick(dt);
+  cloudHitMode();
   draw();
 }
 addEventListener('resize', resize); resize(); requestAnimationFrame(frame);

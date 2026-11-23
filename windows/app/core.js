@@ -10,7 +10,7 @@
     { id: -7, name: 'Нижний Новгород', latitude: 56.33, longitude: 44.00, country: 'Россия', timezone: 'Europe/Moscow', portrait: 'nizhny', detail: 'Тёплые отражения, ветка из-за края и дыхание воды.' },
     { id: -8, name: 'Нью-Йорк', latitude: 40.7128, longitude: -74.0060, country: 'США', timezone: 'America/New_York', portrait: 'newyork', detail: 'Погода и местное время Нью-Йорка.' }
   ];
-  const defaults = { sunDust: true, soundSource: 'city', weatherVolume: .25, theme: 'sage', lightning: true, enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
+  const defaults = { dragClouds: false, cloudLevels: [-1,-1,-1], sunDust: true, soundSource: 'city', weatherVolume: .25, theme: 'sage', lightning: true, enabled: false, atmosphere: true, city: null, mode: 'snow', paused: false,
     intensity: 1, speed: 1, size: 1, opacity: 0.85, strength: 0.65, sound: false, florenceBells: false, volume: 0.25, onGround: true, onWindows: true,
     cursor: true, drift: 1800, hideInScreenshots: false, overFullScreen: false, openAtLogin: false };
   const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
@@ -36,6 +36,7 @@
     if (['sage','sand','blue','rocks','clouds'].includes(input.theme)) s.theme = input.theme;
     if (input.theme === 'lavender') s.theme = 'blue';
     if (input.soundSource === 'weather') s.soundSource = 'weather';
+    s.cloudLevels = [0,1,2].map(i=>Number.isFinite(input.cloudLevels?.[i]) && input.cloudLevels[i]>=0 && input.cloudLevels[i]<=1 ? input.cloudLevels[i] : -1);
     s.city = validCity(input.city);
     if (!s.city) s.enabled = false;
     return s;

@@ -101,6 +101,7 @@ $('search-form').onsubmit = async event => {
   } catch (e) { if (token === searchToken) error(e); }
   finally { if (token === searchToken) $('search').disabled = false; }
 };
+$('reset-clouds').onclick = () => api.resetClouds().catch(error);
 $('test-sunlight').onclick = () => api.previewSunlight().catch(error);
 $('test-lightning').onclick = () => api.previewLightning().catch(error);
 $('preview').onclick = () => api.preview().catch(error);
