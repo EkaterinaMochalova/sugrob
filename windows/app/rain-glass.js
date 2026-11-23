@@ -37,7 +37,7 @@ window.RainGlass = class {
     b.absorbed=true;d.r=Math.min(13,Math.sqrt(d.r*d.r+b.r*b.r*.65));d.v+=12;
    }
    const last=d.points.at(-1);if(!last||Math.hypot(last[0]-d.x,last[1]-d.y)>4)d.points.push([d.x,d.y,this.age]);
-   d.points=d.points.filter(p=>this.age-p[2]<2.4).slice(-60);
+   d.points=d.points.filter(p=>this.age-p[2]<1.25).slice(-60);
   }
   this.drops=this.drops.filter(d=>!d.absorbed&&d.y<this.h+30);
  }
@@ -49,10 +49,11 @@ window.RainGlass = class {
    const alpha=this.strength*pulse;
    c.lineCap='butt';
    for(let i=1;i<d.points.length;i++){
-    const a=d.points[i-1],b=d.points[i],fade=Math.max(0,1-(this.age-b[2])/2.4);
-    c.globalAlpha=alpha*fade;
-    c.lineWidth=d.r*.4;c.strokeStyle='rgba(20,26,30,.09)';c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.stroke();
-    c.lineWidth=.65;c.strokeStyle='rgba(255,255,255,.12)';c.beginPath();c.moveTo(a[0]+d.r*.18,a[1]);c.lineTo(b[0]+d.r*.18,b[1]);c.stroke();
+    const a=d.points[i-1],b=d.points[i],distance=Math.hypot(b[0]-d.x,b[1]-d.y);
+    const headFade=Math.min(1,Math.max(0,(distance-d.r*1.5)/(d.r*1.5)));
+    const tailFade=Math.max(0,1-distance/100),timeFade=Math.max(0,1-(this.age-b[2])/1.25);
+    c.globalAlpha=alpha*headFade*tailFade*tailFade*timeFade*timeFade;
+    c.lineWidth=Math.max(.4,d.r*.16*tailFade);c.strokeStyle='rgba(89,89,89,.035)';c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.stroke();
    }
    c.globalAlpha=alpha*(d.moving?.9:.7);
    const im=waterLenses[d.variant],stretch=d.moving?1+Math.min(.4,d.v/400):1;

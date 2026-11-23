@@ -557,7 +557,7 @@ final class RainGlassNode: SKNode {
                 b.absorbed = true; d.radius = min(13, sqrt(d.radius*d.radius+b.radius*b.radius*0.65)); d.velocity += 12
             }
             if d.points.last.map({ hypot($0.point.x-d.point.x,$0.point.y-d.point.y)>4 }) ?? true { d.points.append((d.point,age)) }
-            d.points = Array(d.points.filter { age-$0.time<2.4 }.suffix(60))
+            d.points = Array(d.points.filter { age-$0.time<1.25 }.suffix(60))
         }
         drops.removeAll { d in
             if d.absorbed || d.point.y < -30 { d.root.removeFromParent(); return true }
@@ -567,9 +567,14 @@ final class RainGlassNode: SKNode {
                 trail.isHidden = false
                 let a = d.points[i-1], b = d.points[i], path = CGMutablePath()
                 path.move(to: a.point); path.addLine(to: b.point); trail.path = path
-                trail.strokeColor = NSColor(calibratedWhite: 0.22, alpha: 0.14)
-                trail.lineWidth = d.radius*0.4
-                trail.alpha = max(0,1-(age-b.time)/2.4)
+                // A short wet trace, with no dark stem showing through the transparent head.
+                let distance = hypot(b.point.x-d.point.x, b.point.y-d.point.y)
+                let headFade = min(1, max(0, (distance-d.radius*1.5)/(d.radius*1.5)))
+                let tailFade = max(0, 1-distance/100)
+                let timeFade = max(0, 1-(age-b.time)/1.25)
+                trail.strokeColor = NSColor(calibratedWhite: 0.35, alpha: 0.035)
+                trail.lineWidth = max(0.4, d.radius*0.16*tailFade)
+                trail.alpha = headFade*tailFade*tailFade*timeFade*timeFade
             }
             let stretch: CGFloat = d.moving ? 1+min(0.4,d.velocity/400) : 1
             d.lens.position = d.point
