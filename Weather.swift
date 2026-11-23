@@ -5,6 +5,7 @@ extension Notification.Name { static let previewLightning = Notification.Name("S
 
 enum Mode: String, CaseIterable, Identifiable {
     case snow, leaves, rain, petals, clouds, storm
+    var soundAsset: String? { self == .rain ? "weather-rain" : self == .storm ? "weather-storm" : nil }
     var id: String { rawValue }
     var title: String {
         switch self {

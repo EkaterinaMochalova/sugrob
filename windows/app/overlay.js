@@ -29,7 +29,7 @@ function renderState(next) {
   const key = String(mode);
   if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
-  sounds.sync(next.audioLeader && s.atmosphere && s.sound && !s.paused, mood?.profile === 'florence' && s.florenceBells ? 'florence-bells' : mood?.soundAsset, s.volume);
+  sounds.sync(next.audioLeader && s.sound && !s.paused, C.soundTrack(s,next.weather.current), s.soundSource === 'weather' ? s.weatherVolume : s.volume);
 }
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {

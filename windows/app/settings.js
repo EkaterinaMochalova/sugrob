@@ -69,9 +69,14 @@ function render(next) {
   $('test-lightning').disabled = s.paused || !s.lightning || matchMedia('(prefers-reduced-motion: reduce)').matches;
   $('preview').disabled = !s.enabled || !s.atmosphere || s.paused;
   const hasSound = s.city && C.mood(s.city).soundAsset;
-  $('sound-controls').hidden = !hasSound;
+  $('sound-controls').hidden = false;
+  const weatherSound = s.soundSource === 'weather';
+  $('volume').parentElement.hidden = weatherSound;
+  $('weather-volume-label').hidden = !weatherSound;
+  const track = C.soundTrack(s,next.weather.current);
+  $('sound-note').textContent = weatherSound ? (track ? 'Запись погоды · раскаты не синхронизированы со вспышками.' : 'Для этой погоды звука пока нет — тишина.') : (hasSound ? 'Запись города, не прямая трансляция.' : 'Для этого города записи пока нет.');
   $('atmosphere').parentElement.hidden = !hasSound;
-  $('florence-choice').hidden = portrait?.portrait !== 'florence' || !s.sound;
+  $('florence-choice').hidden = portrait?.portrait !== 'florence' || !s.sound || weatherSound;
   $('volume').disabled = !s.sound;
   $('refresh').disabled = !s.enabled || next.weather.loading;
   const w = next.weather;

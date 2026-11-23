@@ -209,8 +209,8 @@ enum PresenceAssets {
 @MainActor final class AtmosphereSound {
     private var player: AVAudioPlayer?
     private var track: String?
-    func apply(enabled: Bool, mood: CityMood?, volume: Double, florenceBells: Bool = false) {
-        let selected = mood?.portrait == .florence && florenceBells ? "florence-bells" : mood?.soundAsset
+    func apply(enabled: Bool, mood: CityMood?, volume: Double, florenceBells: Bool = false, weatherSound: Bool = false, effect: Mode? = nil) {
+        let selected = weatherSound ? effect?.soundAsset : (mood?.portrait == .florence && florenceBells ? "florence-bells" : mood?.soundAsset)
         guard enabled, let selected, let url = PresenceAssets.url(selected, extension: "mp3") else {
             let old = player; player = nil; track = nil
             old?.setVolume(0, fadeDuration: 0.5)

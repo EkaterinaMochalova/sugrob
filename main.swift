@@ -14,7 +14,7 @@ let defaultSettings: [String: Any] = [
     "mode": Mode.snow.rawValue, "intensity": 1.0, "speed": 1.0, "size": 1.0, "opacity": 0.9,
     "paused": false, "behindWindows": false, "overFullScreen": false, "hideInScreenshots": true,
     "onWindows": true, "onGround": true, "cursor": true, "drift": 2500.0,
-    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25,
+    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "soundSource": "city",
 ]
 
 extension Notification.Name {
@@ -787,6 +787,7 @@ struct SettingsView: View {
                     ForEach(AppTheme.allCases) { Text($0.title).tag($0) }
                 }
             }
+            Section("Звуковой фон") { SoundControls(weather: weather) }
             Section("Гроза") {
                 Toggle("Вспышки молнии", isOn: $lightning)
                 Button("Проверить молнию") { NotificationCenter.default.post(name: .previewLightning, object: nil) }
@@ -917,8 +918,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let d = UserDefaults.standard
         overlays.forEach { $0.apply(d, weather: weather) }
         let soundMood = weather.city.map { CityMood(city: $0, code: weather.current?.weather_code) }
-        atmosphereSound.apply(enabled: d.bool(forKey: "cityAtmosphere") && d.bool(forKey: "atmosphereSound") && !d.bool(forKey: "paused"),
-            mood: soundMood, volume: d.double(forKey: "atmosphereVolume"), florenceBells: d.bool(forKey: "florenceBells"))
+        let weatherSound = d.string(forKey: "soundSource") == "weather"
+        let effect = weather.enabled ? weather.current?.effect : Mode(rawValue: d.string(forKey: "mode") ?? "snow")
+        atmosphereSound.apply(enabled: (weatherSound || d.bool(forKey: "cityAtmosphere")) && d.bool(forKey: "atmosphereSound") && !d.bool(forKey: "paused"),
+            mood: soundMood, volume: d.double(forKey: weatherSound ? "weatherVolume" : "atmosphereVolume"), florenceBells: d.bool(forKey: "florenceBells"), weatherSound: weatherSound, effect: effect)
         pauseItem.state = d.bool(forKey: "paused") ? .on : .off
 
         let inMenuBar = d.bool(forKey: "showInMenuBar")

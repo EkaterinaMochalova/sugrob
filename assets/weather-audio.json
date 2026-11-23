@@ -1,0 +1,16 @@
+{
+  "license": "Public domain, released by the authors",
+  "processing": "1-second seam crossfade, loudness -24 LUFS, MP3 128 kbps",
+  "tracks": [
+    {
+      "file": "weather-rain.mp3",
+      "author": "ezwa",
+      "source": "https://commons.wikimedia.org/wiki/File:Rain_(1).ogg"
+    },
+    {
+      "file": "weather-storm.mp3",
+      "author": "Caesar",
+      "source": "https://commons.wikimedia.org/wiki/File:Rain_and_thunder.ogg"
+    }
+  ]
+}

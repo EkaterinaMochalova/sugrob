@@ -103,8 +103,9 @@ struct DashboardView: View {
                         weatherSource
                         if let city = weather.city {
                             if weather.enabled { weatherCard(city) }
-                            if CityMood(city: city).soundAsset != nil { soundCard(city) }
+
                         }
+                        SoundControls(weather: weather).padding(20).background(Color.white.opacity(0.7)).cornerRadius(16)
                         DisclosureGroup("Другой город") {
                             VStack(alignment: .leading) {
                                 HStack {
@@ -221,22 +222,42 @@ struct DashboardView: View {
             if !weather.enabled { Text("Включён ручной эффект. Его можно изменить в настройках.").font(.caption).foregroundStyle(.secondary) }
         }.padding(20).background(Color.white.opacity(0.7)).cornerRadius(16)
     }
-    private func soundCard(_ city: WeatherCity) -> some View {
+}
+
+struct SoundControls: View {
+    @ObservedObject var weather: WeatherStore
+    @AppStorage("atmosphereSound") private var sound = false
+    @AppStorage("soundSource") private var source = "city"
+    @AppStorage("cityAtmosphere") private var atmosphere = false
+    @AppStorage("atmosphereVolume") private var cityVolume = 0.25
+    @AppStorage("weatherVolume") private var weatherVolume = 0.25
+    @AppStorage("florenceBells") private var bells = false
+    @AppStorage("mode") private var mode = Mode.snow
+    @AppStorage("paused") private var paused = false
+    private var effect: Mode? { weather.enabled ? weather.current?.effect : mode }
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Звуки города", systemImage: "waveform").font(.system(size: 14, weight: .medium))
-                Spacer()
-                Toggle("Звуки города", isOn: $sound).labelsHidden().toggleStyle(.switch)
-                    .onChange(of: sound) { on in if on { atmosphere = true } }
-            }
-            if sound {
-                if CityPortrait.matching(city) == .florence {
+            Toggle("Звуковой фон", isOn: $sound).toggleStyle(.switch)
+                .onChange(of: sound) { on in if on { atmosphere = true } }
+            Picker("Источник звука", selection: $source) {
+                Text("Звуки города").tag("city")
+                Text("Звуки погоды").tag("weather")
+            }.pickerStyle(.segmented)
+            if source == "weather" {
+                Text(effect == .rain ? "Дождь" : effect == .storm ? "Дождь и раскаты грома" : "Для этой погоды звука пока нет — тишина.").font(.caption)
+                Slider(value: $weatherVolume, in: 0...1) { Text("Громкость погоды") }
+                Text("Запись следует выбранной погоде. Раскаты не синхронизированы со вспышками.").font(.caption).foregroundStyle(.secondary)
+            } else {
+                if weather.city.map({ CityPortrait.matching($0) == .florence }) == true {
                     Picker("Запись", selection: $bells) { Text("Площадь").tag(false); Text("Колокола").tag(true) }.pickerStyle(.segmented)
                 }
-                Slider(value: $volume, in: 0...1) { Text("Громкость") }
-                if paused { Text("Звук приостановлен вместе с эффектами города.").font(.caption) }
+                Slider(value: $cityVolume, in: 0...1) { Text("Громкость города") }
+                if weather.city.flatMap({ CityMood(city: $0).soundAsset }) == nil {
+                    Text("Для этого города записи пока нет.").font(.caption)
+                }
             }
-            Text("Полевая запись · отдельно от звука live-камеры").font(.system(size: 11)).foregroundStyle(.secondary)
-        }.padding(20).background(Color.white.opacity(0.7)).cornerRadius(16)
+            if paused { Text("Звук на паузе вместе с эффектами.").font(.caption) }
+            Text("Отдельно от звука live-камеры").font(.caption).foregroundStyle(.secondary)
+        }
     }
 }
