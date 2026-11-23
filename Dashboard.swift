@@ -246,7 +246,7 @@ struct SoundControls: View {
             if source == "weather" {
                 Text(effect == .rain ? "Дождь" : effect == .storm ? "Дождь и раскаты грома" : "Для этой погоды звука пока нет — тишина.").font(.caption)
                 Slider(value: $weatherVolume, in: 0...1) { Text("Громкость погоды") }
-                Text("Запись следует выбранной погоде. Раскаты не синхронизированы со вспышками.").font(.caption).foregroundStyle(.secondary)
+                Text("Дождь звучит непрерывно. Гром — после молнии, с задержкой 0,8–1,8 с.").font(.caption).foregroundStyle(.secondary)
             } else {
                 if weather.city.map({ CityPortrait.matching($0) == .florence }) == true {
                     Picker("Запись", selection: $bells) { Text("Площадь").tag(false); Text("Колокола").tag(true) }.pickerStyle(.segmented)

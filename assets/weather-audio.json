@@ -11,6 +11,12 @@
       "file": "weather-storm.mp3",
       "author": "Caesar",
       "source": "https://commons.wikimedia.org/wiki/File:Rain_and_thunder.ogg"
+    },
+    {
+      "file": "weather-thunder.mp3",
+      "author": "Caesar",
+      "source": "https://commons.wikimedia.org/wiki/File:Rain_and_thunder.ogg",
+      "processing": "Seconds 2\u201310, highpass 30 Hz, lowpass 1800 Hz, fade in 0.08 s, fade out 2 s, -23 LUFS; one shot following lightning"
     }
   ]
 }

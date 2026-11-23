@@ -209,8 +209,35 @@ enum PresenceAssets {
 @MainActor final class AtmosphereSound {
     private var player: AVAudioPlayer?
     private var track: String?
-    func apply(enabled: Bool, mood: CityMood?, volume: Double, florenceBells: Bool = false, weatherSound: Bool = false, effect: Mode? = nil) {
-        let selected = weatherSound ? effect?.soundAsset : (mood?.portrait == .florence && florenceBells ? "florence-bells" : mood?.soundAsset)
+    private var thunderPlayer: AVAudioPlayer?
+    private var thunderJob: DispatchWorkItem?
+    private var thunderAllowed = false
+    private var thunderContext: Mode?
+    private var thunderVolume: Float = 0.25
+    func strike() {
+        guard thunderAllowed, thunderJob == nil else { return }
+        let job = DispatchWorkItem { [weak self] in
+            guard let self, self.thunderAllowed else { return }
+            self.thunderJob = nil
+            guard let url = PresenceAssets.url("weather-thunder", extension: "mp3") else { return }
+            self.thunderPlayer?.stop()
+            self.thunderPlayer = try? AVAudioPlayer(contentsOf: url)
+            self.thunderPlayer?.volume = self.thunderVolume
+            self.thunderPlayer?.play()
+        }
+        thunderJob = job
+        DispatchQueue.main.asyncAfter(deadline: .now() + .random(in: 0.8...1.8), execute: job)
+    }
+    func apply(enabled: Bool, mood: CityMood?, volume: Double, florenceBells: Bool = false, weatherSound: Bool = false, effect: Mode? = nil, lightningEnabled: Bool = true) {
+        let allowed = enabled && weatherSound && lightningEnabled
+        if !allowed || effect != thunderContext {
+            thunderJob?.cancel(); thunderJob = nil
+            thunderPlayer?.stop(); thunderPlayer = nil
+        }
+        thunderAllowed = allowed; thunderContext = effect
+        thunderVolume = Float(min(1, max(0, volume))) * 0.5
+        thunderPlayer?.volume = thunderVolume
+        let selected = weatherSound ? (effect == .storm ? "weather-rain" : effect?.soundAsset) : (mood?.portrait == .florence && florenceBells ? "florence-bells" : mood?.soundAsset)
         guard enabled, let selected, let url = PresenceAssets.url(selected, extension: "mp3") else {
             let old = player; player = nil; track = nil
             old?.setVolume(0, fadeDuration: 0.5)

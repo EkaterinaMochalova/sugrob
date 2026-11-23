@@ -74,7 +74,7 @@ function render(next) {
   $('volume').parentElement.hidden = weatherSound;
   $('weather-volume-label').hidden = !weatherSound;
   const track = C.soundTrack(s,next.weather.current);
-  $('sound-note').textContent = weatherSound ? (track ? 'Запись погоды · раскаты не синхронизированы со вспышками.' : 'Для этой погоды звука пока нет — тишина.') : (hasSound ? 'Запись города, не прямая трансляция.' : 'Для этого города записи пока нет.');
+  $('sound-note').textContent = weatherSound ? (track ? 'Дождь непрерывен · гром через 0,8–1,8 с после молнии.' : 'Для этой погоды звука пока нет — тишина.') : (hasSound ? 'Запись города, не прямая трансляция.' : 'Для этого города записи пока нет.');
   $('atmosphere').parentElement.hidden = !hasSound;
   $('florence-choice').hidden = portrait?.portrait !== 'florence' || !s.sound || weatherSound;
   $('volume').disabled = !s.sound;

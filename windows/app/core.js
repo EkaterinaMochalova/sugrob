@@ -107,7 +107,7 @@
   function soundTrack(s, current) {
     if(s.soundSource === 'weather') {
       const kind=s.enabled?currentEffect(current):s.mode;
-      return kind==='rain'?'weather-rain':kind==='storm'?'weather-storm':null;
+      return kind==='rain'?'weather-rain':kind==='storm'?'weather-rain':null;
     }
     if(!s.city || !s.atmosphere) return null;
     const m=mood(s.city);

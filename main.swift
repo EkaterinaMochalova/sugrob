@@ -306,6 +306,7 @@ final class SnowScene: SKScene {
         stormWait = .random(in: 12...24)
         let bolt = makeLightning()
         field.addChild(bolt); lightning = bolt; lightningAge = 0
+        NotificationCenter.default.post(name: .lightningStrike, object: self)
     }
     private func makeLightning() -> SKShapeNode {
         // Midpoint displacement gives branching channels, rather than a regular zigzag.
@@ -359,6 +360,7 @@ final class SnowScene: SKScene {
               !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
         lastLightningPreview = now
         let bolt = makeLightning()
+        NotificationCenter.default.post(name: .lightningStrike, object: self)
         bolt.name = "lightningPreview"
         addChild(bolt)
         bolt.run(.sequence([.customAction(withDuration: 0.65) { node, time in node.alpha = exp(-time * 7) * 0.9 }, .removeFromParent()]))
@@ -881,6 +883,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         center.addObserver(forName: .clearAll, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.clearAll() }
         }
+        center.addObserver(forName: .lightningStrike, object: nil, queue: .main) { [weak self] note in
+            guard let scene = note.object as? SnowScene else { return }
+            Task { @MainActor in
+                guard let self, self.overlays.first?.scene === scene else { return }
+                self.atmosphereSound.strike()
+            }
+        }
         center.addObserver(forName: .previewLightning, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.overlays.forEach { $0.scene.previewLightning() } }
         }
@@ -921,7 +930,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let weatherSound = d.string(forKey: "soundSource") == "weather"
         let effect = weather.enabled ? weather.current?.effect : Mode(rawValue: d.string(forKey: "mode") ?? "snow")
         atmosphereSound.apply(enabled: (weatherSound || d.bool(forKey: "cityAtmosphere")) && d.bool(forKey: "atmosphereSound") && !d.bool(forKey: "paused"),
-            mood: soundMood, volume: d.double(forKey: weatherSound ? "weatherVolume" : "atmosphereVolume"), florenceBells: d.bool(forKey: "florenceBells"), weatherSound: weatherSound, effect: effect)
+            mood: soundMood, volume: d.double(forKey: weatherSound ? "weatherVolume" : "atmosphereVolume"), florenceBells: d.bool(forKey: "florenceBells"), weatherSound: weatherSound, effect: effect, lightningEnabled: d.object(forKey: "lightning") as? Bool != false)
         pauseItem.state = d.bool(forKey: "paused") ? .on : .off
 
         let inMenuBar = d.bool(forKey: "showInMenuBar")

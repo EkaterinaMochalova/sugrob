@@ -148,11 +148,11 @@ test('Weather audio follows manual or city weather and never falls back to city 
  const city=C.cities.find(c=>c.portrait==='rome');
  for(const mode of ['rain','storm']) {
   const s=C.normalize({city,mode,soundSource:'weather',atmosphere:false,weatherVolume:.7});
-  assert.equal(C.soundTrack(s,null),'weather-'+mode);
+  assert.equal(C.soundTrack(s,null),'weather-rain');
   assert.equal(s.weatherVolume,.7);
  }
  const s=C.normalize({city,enabled:true,mode:'rain',soundSource:'weather'});
- assert.equal(C.soundTrack(s,{weather_code:95,precipitation:.5}),'weather-storm');
+ assert.equal(C.soundTrack(s,{weather_code:95,precipitation:.5}),'weather-rain');
  assert.equal(C.soundTrack(s,{weather_code:61,precipitation:0}),null);
  assert.equal(C.soundTrack(s,null),null);
  assert.equal(C.soundTrack({...s,enabled:false,mode:'snow'},null),null);

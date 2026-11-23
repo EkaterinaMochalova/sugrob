@@ -29,7 +29,7 @@ function renderState(next) {
   const key = String(mode);
   if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
-  sounds.sync(next.audioLeader && s.sound && !s.paused, C.soundTrack(s,next.weather.current), s.soundSource === 'weather' ? s.weatherVolume : s.volume);
+  sounds.sync(next.audioLeader && s.sound && !s.paused, C.soundTrack(s,next.weather.current), s.soundSource === 'weather' ? s.weatherVolume : s.volume, s.soundSource === 'weather' && s.lightning !== false,mode);
 }
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {
@@ -115,7 +115,7 @@ function makeBolt() {
 api.onLightningPreview(() => {
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(!state || state.settings.paused || !state.settings.lightning || reduced || time-lastPreview<3) return;
-  lastPreview=time; previewBolt=makeBolt();
+  lastPreview=time; previewBolt=makeBolt(); sounds.strike();
 });
 function tick(dt) {
   const s = state.settings; time += dt;
@@ -126,7 +126,7 @@ function tick(dt) {
     stormWait -= dt;
     if (stormWait <= 0) {
       stormWait = 12 + Math.random()*12;
-      bolt = makeBolt();
+      bolt = makeBolt(); sounds.strike();
     }
   } else { bolt = null; stormWait = 8; }
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }

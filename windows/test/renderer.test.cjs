@@ -14,7 +14,7 @@ function renderer() {
   const canvas = () => ({ getContext: () => drawing });
   const initial = { settings: C.normalize(), weather: { current: null } };
   const context = { document: { getElementById: canvas, createElement: canvas }, innerWidth: 1920, innerHeight: 1080,
-    Soundscape: class { sync() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
+    Soundscape: class { sync() {} strike() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
     devicePixelRatio: 1.5, addEventListener() {}, requestAnimationFrame() {}, console,
     sugrob: { onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
