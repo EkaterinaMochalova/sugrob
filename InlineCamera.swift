@@ -52,14 +52,14 @@ final class InlineCameraSession: NSObject, ObservableObject, WKNavigationDelegat
         }
         if loadedKey == nil { load(); return }
         let token = generation
-        web.evaluateJavaScript("(()=>{const v=document.querySelector('video');return v?{t:v.currentTime,paused:v.paused,error:!!v.error}:null})()") { [weak self] value, _ in
+        web.evaluateJavaScript("(()=>{const v=document.querySelector('video'),p=document.getElementById('movie_player');let r;try{r=p?.getPlayerResponse?.()}catch{}const e=document.querySelector('.ytp-error-content-wrap');const message=e&&e.getClientRects().length?e.textContent.trim().slice(0,240):'';const live=r?.microformat?.playerMicroformatRenderer?.liveBroadcastDetails?.isLiveNow;const type=live===true?'Прямой эфир':r?.videoDetails?.isLiveContent===false?'Видео':live===false?'Запись эфира':'Видео · тип эфира не подтверждён';return message?{t:0,error:true,message}:v?{t:v.currentTime,paused:v.paused,error:!!v.error,type}:null})()") { [weak self] value, _ in
             guard let self, token == self.generation else { return }
             guard let v = value as? [String: Any], let t = v["t"] as? Double else {
                 self.status = "Ожидаем плеер · запуск — кнопкой ▶"; return
             }
-            if v["error"] as? Bool == true { self.status = "Видео недоступно · попробуйте обновить" }
+            if v["error"] as? Bool == true { self.status = "Видео недоступно: " + (v["message"] as? String ?? "попробуйте обновить") }
             else if v["paused"] as? Bool == true { self.status = "Пауза · нажмите ▶ в плеере" }
-            else if t > self.lastTime && self.lastTime >= 0 { self.status = "● Видео воспроизводится" }
+            else if t > self.lastTime && self.lastTime >= 0 { self.status = "● " + (v["type"] as? String ?? "Видео") + " · воспроизводится" }
             else { self.status = "Буферизация…" }
             self.lastTime = t
         }

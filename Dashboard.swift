@@ -32,6 +32,9 @@ struct DashboardView: View {
     private var ink: Color { theme.ink }
     private var paper: Color { theme.paper }
     @State private var settings = false
+    @ObservedObject private var library = CityLibrary.shared
+    @State private var editingCity = false
+    @State private var editorCity: WeatherCity?
     @State private var query = ""
     @State private var cameraChoice = ""
     @State private var expanded = false
@@ -75,7 +78,12 @@ struct DashboardView: View {
                         }.buttonStyle(.plain)
                     }
                 }
+                ForEach(library.places.filter { CityPortrait.matching($0.city) == .neutral }) { place in
+                    Button(place.city.title) { weather.select(place.city, enableWeather: weather.enabled); settings = false }
+                        .buttonStyle(.plain).font(.system(size: 12))
                 }
+                }
+                Button("＋ Добавить город") { editorCity = nil; editingCity = true }
                 Spacer(minLength: 0)
                 Button { settings.toggle() } label: {
                     Label(settings ? "Вернуться к городу" : "Эффекты и настройки", systemImage: settings ? "arrow.left" : "slider.horizontal.3")
@@ -117,9 +125,9 @@ struct DashboardView: View {
                                 }
                                 if let message = weather.searchMessage { Text(message).font(.caption) }
                                 ForEach(weather.results) { city in
-                                    Button(city.title) { weather.select(city, enableWeather: weather.enabled) }.buttonStyle(.link)
+                                    Button(city.title) { editorCity = CityPortrait.matching(city) == .neutral ? city : CityPortrait.matching(city).city; editingCity = true }.buttonStyle(.link)
                                 }
-                                Text("Для найденного города доступна погода. Камеры есть у городов в списке слева.").font(.caption).foregroundStyle(.secondary)
+                                Text("Город и свои YouTube-камеры можно сохранить через «Мои камеры».").font(.caption).foregroundStyle(.secondary)
                             }.padding(.top, 8)
                         }.font(.system(size: 12))
                         Link("Погода: Open-Meteo · Города: GeoNames", destination: URL(string: "https://open-meteo.com/")!).font(.system(size: 10)).opacity(0.6)
@@ -132,6 +140,7 @@ struct DashboardView: View {
         }
         .frame(minWidth: 850, idealWidth: 1040, minHeight: 680, idealHeight: 820)
         .onExitCommand { expanded = false }
+        .sheet(isPresented: $editingCity) { CityEditor(weather: weather, library: library, city: editorCity) }
     }
     private var weatherSource: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -201,6 +210,8 @@ struct DashboardView: View {
                     Text("Погода города доступна ниже.").font(.caption)
                 }.frame(maxWidth: .infinity, minHeight: 230, alignment: .center)
             }
+            Button("Мои камеры · добавить / изменить") { editorCity = CityPortrait.matching(city) == .neutral ? city : CityPortrait.matching(city).city; editingCity = true }
+                .font(.caption).buttonStyle(.borderless)
         }.padding(14).background(Color.white.opacity(0.7)).cornerRadius(18)
     }
     private func weatherCard(_ city: WeatherCity) -> some View {

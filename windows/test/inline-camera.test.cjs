@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const cameras=require('../app/live-cameras.json');
-function setup(){
+function setup(catalog){
  const views=[],timers=new Set(),messages=[],children=[];
  class WebContentsView {
   constructor(options){this.options=options;this.events={};this.webContents={
@@ -14,7 +14,7 @@ function setup(){
  const win={visible:true,isVisible(){return this.visible},isMinimized:()=>false,isDestroyed:()=>false,getContentSize:()=>[1000,800],webContents:{send:(...args)=>messages.push(args)},contentView:{addChildView:v=>children.push(v),removeChildView:v=>children.splice(children.indexOf(v),1)}};
  const ctx={module:{exports:{}},require:n=>n==='electron'?{WebContentsView,shell:{openExternal:()=>{}}}:cameras,setInterval:f=>{timers.add(f);return f},clearInterval:f=>timers.delete(f)};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../app/inline-camera.cjs'),'utf8'),ctx);
- return {host:new ctx.module.exports.InlineCamera(win),win,views,timers,messages,children};
+ return {host:new ctx.module.exports.InlineCamera(win,catalog),win,views,timers,messages,children};
 }
 test('Inline camera keeps the player during resize, replaces it on city switch and releases it on hide',()=>{
  const {host,win,views,timers,children}=setup(),a=cameras[0].embed,b=cameras[1].embed;
@@ -36,4 +36,26 @@ test('Inline remote view is isolated, accepts only catalog URLs and returns Esca
  assert.equal(v.bounds.width,980);assert.equal(v.bounds.height,700);
  let prevented=false;v.events['before-input-event']({preventDefault:()=>prevented=true},{type:'keyDown',key:'Escape'});
  assert.ok(prevented);assert.ok(messages.some(m=>m[0]==='camera-collapse'));host.clear();
+});
+
+test('Saved and preview cameras are allowed only while present in the trusted catalog',()=>{
+ let entries=[{embed:'https://www.youtube.com/embed/Y4G5H53X7Tw?autoplay=1&mute=1&playsinline=1'}];
+ const {host,views}=setup(()=>entries),key=entries[0].embed,bounds={x:0,y:0,width:600,height:340};
+ host.show(key,bounds);assert.equal(views.length,1);
+ entries=[];assert.throws(()=>host.show(key,bounds));host.clear();assert.ok(views[0].dead);
+});
+test('Playback labels distinguish confirmed live, recording, unknown and embed errors',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../app/inline-camera.cjs'),'utf8');
+ const script=source.match(/executeJavaScript\("([^"]+)"\)/)[1];
+ function read(response,error=''){
+  return vm.runInNewContext(script,{document:{
+   getElementById:()=>({getPlayerResponse:()=>response}),
+   querySelector:s=>s==='video'?{currentTime:10,paused:false,error:null}:{getClientRects:()=>error?[1]:[],textContent:error}
+  }});
+ }
+ assert.equal(read({microformat:{playerMicroformatRenderer:{liveBroadcastDetails:{isLiveNow:true}}}}).type,'Прямой эфир');
+ assert.equal(read({microformat:{playerMicroformatRenderer:{liveBroadcastDetails:{isLiveNow:false}}},videoDetails:{isLiveContent:true}}).type,'Запись эфира');
+ assert.equal(read({videoDetails:{isLiveContent:false}}).type,'Видео');
+ assert.match(read({}).type,/не подтверждён/);
+ assert.equal(read({},'Автор запретил встраивание').error,true);
 });

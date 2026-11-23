@@ -2,9 +2,9 @@
 const { WebContentsView, shell } = require('electron');
 const cameras = require('./live-cameras.json');
 class InlineCamera {
-  constructor(window) { this.window = window; this.view = null; this.key = null; this.timer = null; this.generation = 0; }
+  constructor(window, catalog = () => cameras) { this.catalog = catalog; this.window = window; this.view = null; this.key = null; this.timer = null; this.generation = 0; }
   show(key, bounds) {
-    const camera = cameras.find(c => c.embed === key);
+    const camera = this.catalog().find(c => c.embed === key);
     if (!camera) throw new Error('Camera unavailable');
     if (!bounds || !['x','y','width','height'].every(k => Number.isFinite(bounds[k]))) throw new Error('Invalid bounds');
     if (!this.window.isVisible() || this.window.isMinimized()) { this.clear(); return; }
@@ -32,9 +32,9 @@ class InlineCamera {
       this.timer = setInterval(async () => {
         if(web.isDestroyed()) return;
         try {
-          const v = await web.executeJavaScript("(()=>{const v=document.querySelector('video');return v?{t:v.currentTime,paused:v.paused,error:!!v.error}:null})()");
+          const v = await web.executeJavaScript("(()=>{const v=document.querySelector('video'),p=document.getElementById('movie_player');let r;try{r=p?.getPlayerResponse?.()}catch{}const e=document.querySelector('.ytp-error-content-wrap');const message=e&&e.getClientRects().length?e.textContent.trim().slice(0,240):'';const live=r?.microformat?.playerMicroformatRenderer?.liveBroadcastDetails?.isLiveNow;const type=live===true?'Прямой эфир':r?.videoDetails?.isLiveContent===false?'Видео':live===false?'Запись эфира':'Видео · тип эфира не подтверждён';return message?{t:0,error:true,message}:v?{t:v.currentTime,paused:v.paused,error:!!v.error,type}:null})()");
           if(generation !== this.generation) return;
-          this.status(!v ? 'Ожидаем плеер · запуск — кнопкой ▶' : v.error ? 'Видео недоступно · попробуйте обновить' : v.paused ? 'Пауза · нажмите ▶ в плеере' : previous >= 0 && v.t > previous ? '● Видео воспроизводится' : 'Буферизация…');
+          this.status(!v ? 'Ожидаем плеер · запуск — кнопкой ▶' : v.error ? ('Видео недоступно: '+(v.message||'попробуйте обновить')) : v.paused ? 'Пауза · нажмите ▶ в плеере' : previous >= 0 && v.t > previous ? ('● '+(v.type||'Видео')+' · воспроизводится') : 'Буферизация…');
           if(v) previous = v.t;
         } catch {}
       },2000);

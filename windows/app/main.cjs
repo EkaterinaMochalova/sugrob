@@ -8,7 +8,9 @@ const { pathToFileURL } = require('node:url');
 const core = require('./core.js');
 const { cameras } = require('./live-camera.cjs');
 const { InlineCamera } = require('./inline-camera.cjs');
-let inlineCamera;
+let inlineCamera, library;
+const {CityLibrary} = require('./city-library.cjs');
+function cameraCatalog(){return [...cameras,...(library?.cameras||[]),...(library?.preview?[library.preview]:[])];}
 const { WeatherService } = require('./weather.cjs');
 let settings, settingsWindow, tray, helper, quitting = false, windows = [], foreground = null;
 let windowStatus = 'Определяем края окон…', persistenceError = null, settingsPath;
@@ -16,7 +18,7 @@ const overlays = new Map();
 const weather = new WeatherService(broadcast);
 const smoke = process.argv.includes('--smoke-test');
 if (smoke) app.setPath('userData', path.join(app.getPath('temp'), `sugrob-smoke-${process.pid}`));
-function snapshot() { return { settings, weather: weather.state, windowStatus, persistenceError }; }
+function snapshot() { return { settings, weather: weather.state, windowStatus, persistenceError, places: library?.places || [], cameras: [...cameras,...(library?.cameras||[])] }; }
 function send(win, channel, data) { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, data); }
 function broadcast() {
   if (!settings) return;
@@ -61,7 +63,7 @@ function showSettings() {
   settingsWindow = new BrowserWindow({ title: 'Сугроб', width: 1100, height: 850, minWidth: 760, minHeight: 600,
     backgroundColor: '#f5f3e9', autoHideMenuBar: true, show: false, icon: path.join(__dirname, 'icon.png'), webPreferences: preferences() });
   secure(settingsWindow);
-  inlineCamera = new InlineCamera(settingsWindow);
+  inlineCamera = new InlineCamera(settingsWindow, cameraCatalog);
   settingsWindow.on('hide', () => inlineCamera.clear());
   settingsWindow.on('minimize', () => inlineCamera.clear());
   settingsWindow.on('show', () => send(settingsWindow, 'camera-layout'));
@@ -140,6 +142,7 @@ else {
     app.setAppUserModelId('local.sugrob.windows');
     Menu.setApplicationMenu(null);
     settingsPath = path.join(app.getPath('userData'), 'settings.json');
+    library = new CityLibrary(path.join(app.getPath('userData'),'cities.json'));
     try { settings = core.normalize(JSON.parse(fs.readFileSync(settingsPath, 'utf8'))); } catch { settings = core.normalize(); }
     session.defaultSession.setPermissionRequestHandler((_web, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
@@ -151,7 +154,8 @@ else {
       save(); weather.select(settings.enabled ? city : null); broadcast(); return snapshot();
     });
     ipcMain.handle('search', async (e, query) => { authorized(e, true); try { return { cities: await weather.search(query) }; } catch { return { error: 'Не удалось найти город. Проверьте интернет и повторите.' }; } });
-    ipcMain.handle('cameras', e => { authorized(e, true); return cameras; });
+    ipcMain.handle('cameras', e => { authorized(e, true); return cameraCatalog(); });
+    ipcMain.handle('library', (e,action,value)=>{authorized(e,true);const result=library.mutate(action,value);broadcast();return result;});
     ipcMain.handle('camera-layout', (e, key, bounds) => { authorized(e, true); if(key === null) inlineCamera?.clear(); else inlineCamera?.show(key,bounds); });
     ipcMain.handle('camera-reload', e => { authorized(e, true); inlineCamera?.reload(); });
     ipcMain.handle('refresh', e => { authorized(e, true); void weather.refresh(); });

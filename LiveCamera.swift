@@ -1,7 +1,7 @@
 import AppKit
 import WebKit
 
-struct LiveCamera: Decodable {
+struct LiveCamera: Codable {
     let id: String
     var key: String { embed?.absoluteString ?? watch.absoluteString }
     let title: String
@@ -14,7 +14,7 @@ struct LiveCamera: Decodable {
               let data = try? Data(contentsOf: url), let cameras = try? JSONDecoder().decode([LiveCamera].self, from: data) else { return [] }
         return cameras
     }()
-    static func forCity(_ city: WeatherCity) -> [LiveCamera] { all.filter { $0.id == CityPortrait.matching(city).rawValue && $0.embed != nil } }
+    static func forCity(_ city: WeatherCity) -> [LiveCamera] { all.filter { $0.id == CityPortrait.matching(city).rawValue && $0.embed != nil } + (CityLibrary.shared.places.first { $0.id == city.id }?.cameras ?? []) }
 }
 
 extension Notification.Name { static let openLiveCamera = Notification.Name("SugrobOpenLiveCamera") }

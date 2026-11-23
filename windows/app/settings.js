@@ -1,7 +1,7 @@
 'use strict';
 const api = window.sugrob, C = window.Sugrob, $ = id => document.getElementById(id);
 let state, searchToken = 0, cameras = [];
-let selectedCamera = null, expanded = false;
+let selectedCamera = null, expanded = false, draftCamera = null, replacingCamera = null;
 const cameraChoices = new Map();
 let cameraCollapsed = localStorage.getItem('cameraCollapsed') === 'true';
 const seasonNames = { winter: 'Зима', spring: 'Весна', summer: 'Лето', autumn: 'Осень' };
@@ -25,7 +25,9 @@ function clock() {
   $('city-clock').textContent = `${m.time} · ${seasonNames[m.season]} · ${lightNames[m.light]}`;
 }
 function render(next) {
+  if(state?.settings.city?.id!==next.settings.city?.id){draftCamera=null;replacingCamera=null;$('custom-link').value='';$('custom-title').value='';$('custom-message').textContent='';}
   state = next; const s = next.settings;
+  cameras=next.cameras||cameras;renderLibrary();
   document.documentElement.dataset.theme = s.theme || "sage";
   for (const key of Object.keys(C.defaults)) {
     const input = $(key); if (!input) continue;
@@ -34,8 +36,8 @@ function render(next) {
   $('city-name').textContent = s.city ? [s.city.name, s.city.admin1, s.city.country].filter(Boolean).join(', ') : 'Выбери город или оставь ручной эффект';
   const portrait = s.city && C.portrait(s.city);
   $('hero-city').textContent = s.city?.name || 'Побудем где-нибудь ещё.';
-  const options = cameras.filter(c => c.id === portrait?.portrait && c.embed);
-  const camera = options.find(c => c.embed === cameraChoices.get(portrait?.portrait)) || options[0];
+  const options = cameras.filter(c => (c.id === portrait?.portrait || c.id === 'custom:'+s.city?.id) && c.embed);
+  const camera = (draftCamera?.id==='custom:'+s.city?.id ? draftCamera : null) || options.find(c => c.embed === cameraChoices.get(String(s.city?.id))) || options[0];
   $('live-card').hidden = !s.city || advanced;
   $('camera-choice').hidden = options.length < 2;
   selectedCamera = camera || null;
@@ -95,7 +97,7 @@ $('search-form').onsubmit = async event => {
     $('search-status').textContent = result.error || (result.cities.length ? 'Выбери подходящий город:' : 'Город не найден. Попробуй другое название.');
     for (const city of result.cities || []) {
       const b = document.createElement('button'); b.textContent = [city.name, city.admin1, city.country].filter(Boolean).join(', ');
-      b.onclick = async () => { try { await api.select(city, state.settings.atmosphere); $('results').replaceChildren(); $('search-status').textContent = ''; } catch (e) { error(e); } };
+      b.onclick = async () => { try { await api.select(C.portrait(city)||city, state.settings.atmosphere); $('results').replaceChildren(); $('search-status').textContent = ''; $('custom-camera').scrollIntoView({block:'center'}); } catch (e) { error(e); } };
       $('results').append(b);
     }
   } catch (e) { if (token === searchToken) error(e); }
@@ -112,7 +114,7 @@ api.subscribe(render); api.state().then(render).catch(error); setInterval(clock,
 
 api.cameras().then(value => { cameras = value; if (state) render(state); }).catch(error);
 let advanced = false;
-function showAdvanced(value) { advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; $('live-card').hidden = advanced || !state?.settings.city; setExpanded(false); syncCamera(); }
+function showAdvanced(value) { advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('custom-camera').hidden=advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; $('live-card').hidden = advanced || !state?.settings.city; setExpanded(false); syncCamera(); }
 $('settings-tab').onclick = () => showAdvanced(!advanced);
 
 $('source-city').onclick = () => api.update({enabled:true}).catch(error);
@@ -121,7 +123,7 @@ $('manual-mode').onchange = () => api.update({mode:$('manual-mode').value}).catc
 $('quick-intensity').onchange = () => api.update({intensity:Number($('quick-intensity').value)}).catch(error);
 $('quick-speed').onchange = () => api.update({speed:Number($('quick-speed').value)}).catch(error);
 $('quick-pause').onclick = () => api.update({paused:!state.settings.paused}).catch(error);
-$('camera-select').onchange = () => { const portrait = C.portrait(state.settings.city); cameraChoices.set(portrait.portrait, $('camera-select').value); render(state); };
+$('camera-select').onchange = () => { const portrait = C.portrait(state.settings.city); cameraChoices.set(String(state.settings.city.id), $('camera-select').value); render(state); };
 
 let cameraFrame;
 function syncCamera() {
@@ -150,3 +152,37 @@ new ResizeObserver(syncCamera).observe($('camera-viewport'));
 api.onCameraStatus(value => { $('camera-note').textContent = value; });
 api.onCameraCollapse(() => setExpanded(false));
 api.onCameraLayout(syncCamera);
+
+function renderLibrary(){
+ $('saved-presets').replaceChildren();
+ for(const place of state.places||[]){
+  if(C.cities.some(c=>c.id===place.city.id))continue;
+  const b=document.createElement('button');b.textContent=[place.city.name,place.city.country].filter(Boolean).join(' · ');
+  b.setAttribute('aria-pressed',String(place.city.id===state.settings.city?.id));
+  b.onclick=()=>{draftCamera=null;replacingCamera=null;showAdvanced(false);api.select(place.city,true).catch(error);};
+  $('saved-presets').append(b);
+ }
+ const city=state.settings.city,place=(state.places||[]).find(p=>p.city.id===city?.id);
+ $('custom-cancel').hidden=!draftCamera;
+ $('custom-save').disabled=!city;$('custom-preview').disabled=!city;$('custom-delete').hidden=!place;
+ $('custom-list').replaceChildren();
+ for(const c of place?.cameras||[]){
+  const row=document.createElement('div'),label=document.createElement('span'),edit=document.createElement('button'),remove=document.createElement('button');
+  label.textContent=c.title;edit.textContent='Изменить';remove.textContent='Удалить';
+  edit.onclick=()=>{$('custom-link').value=c.watch;$('custom-title').value=c.title;replacingCamera=c.embed;draftCamera=null;};
+  remove.onclick=async()=>{try{await api.library('remove-camera',{city,key:c.embed});draftCamera=null;replacingCamera=null;render(await api.state());}catch(e){$('custom-message').textContent=e.message;}};
+  row.append(label,edit,remove);$('custom-list').append(row);
+ }
+}
+$('add-city').onclick=()=>{showAdvanced(false);$('city-section').querySelector('details').open=true;$('query').focus();$('city-section').scrollIntoView({block:'center'});};
+$('custom-preview').onclick=async()=>{
+ try{draftCamera=await api.library('preview',{city:state.settings.city,link:$('custom-link').value,title:$('custom-title').value});cameraCollapsed=false;render(await api.state());$('live-card').scrollIntoView({block:'start'});$('custom-message').textContent='Предпросмотр открыт выше. Если автор запретил встраивание, плеер сообщит об этом.';}
+ catch(e){$('custom-message').textContent=e.message;}
+};
+$('custom-save').onclick=async()=>{
+ try{await api.library('save',{city:state.settings.city,link:$('custom-link').value,title:$('custom-title').value,replacing:replacingCamera});draftCamera=null;replacingCamera=null;$('custom-link').value='';$('custom-title').value='';$('custom-message').textContent='Сохранено';render(await api.state());}
+ catch(e){$('custom-message').textContent=e.message;}
+};
+$('custom-cancel').onclick=async()=>{draftCamera=null;await api.library('clear-preview',{city:state.settings.city});render(await api.state());};
+$('custom-delete').onclick=async()=>{try{await api.library('remove-city',{city:state.settings.city});draftCamera=null;replacingCamera=null;render(await api.state());}catch(e){$('custom-message').textContent=e.message;}};
+$('custom-link').oninput=()=>{draftCamera=null;if(state)render(state);};
