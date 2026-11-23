@@ -4,11 +4,12 @@ import AVFoundation
 
 // Artistic city portraits, not observations of flowering or astronomical sunrise.
 enum CityPortrait: String, CaseIterable {
-    case moscow, rome, athens, petersburg, tokyo, florence, nizhny, newyork, neutral
+    case moscow, rome, athens, petersburg, tokyo, florence, nizhny, newyork, yerevan, neutral
 
     static var destinations: [CityPortrait] { allCases.filter { $0 != .neutral } }
     var city: WeatherCity {
         switch self {
+        case .yerevan: return WeatherCity(id: -9, name: "Ереван", latitude: 40.1872, longitude: 44.5152, country: "Армения", timezone: "Asia/Yerevan")
         case .newyork: return WeatherCity(id: -8, name: "Нью-Йорк", latitude: 40.7128, longitude: -74.0060, country: "США", timezone: "America/New_York")
         case .nizhny: return WeatherCity(id: -7, name: "Нижний Новгород", latitude: 56.33, longitude: 44.00, country: "Россия", timezone: "Europe/Moscow")
         case .moscow: return WeatherCity(id: -1, name: "Москва", latitude: 55.75, longitude: 37.62, country: "Россия", timezone: "Europe/Moscow")
@@ -25,6 +26,7 @@ enum CityPortrait: String, CaseIterable {
     }
     var detail: String {
         switch self {
+        case .yerevan: return "Погода и местное время Еревана."
         case .newyork: return "Погода и местное время Нью-Йорка."
         case .nizhny: return "Тёплые отражения, ветка из-за края и тихое дыхание воды."
         case .moscow: return "Порыв ветра приоткрывает осеннюю ветку; серебристый свет скользит по краю."

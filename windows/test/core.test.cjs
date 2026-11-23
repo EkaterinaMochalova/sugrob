@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const C = require('../app/core.js');
 const { WeatherService } = require('../app/weather.cjs');
-test('Eight city portraits, winter/summer clocks and daylight-saving time', () => {
-  assert.equal(C.cities.length, 8);
+test('Nine city portraits, winter/summer clocks and daylight-saving time', () => {
+  assert.equal(C.cities.length, 9);
   const winter = new Date('2026-01-15T12:00:00Z'), summer = new Date('2026-06-15T12:00:00Z');
-  const times = [['15:00', '15:00'], ['13:00', '14:00'], ['14:00', '15:00'], ['15:00', '15:00'], ['21:00', '21:00'], ['13:00', '14:00'], ['15:00', '15:00'], ['07:00', '08:00']];
+  const times = [['15:00', '15:00'], ['13:00', '14:00'], ['14:00', '15:00'], ['15:00', '15:00'], ['21:00', '21:00'], ['13:00', '14:00'], ['15:00', '15:00'], ['07:00', '08:00'], ['16:00', '16:00']];
   C.cities.forEach((city, i) => {
     assert.equal(C.portrait(C.validCity(city)).portrait, city.portrait);
     assert.equal(C.mood(city, winter).time, times[i][0]); assert.equal(C.mood(city, summer).time, times[i][1]);

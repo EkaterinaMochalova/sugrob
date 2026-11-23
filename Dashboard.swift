@@ -22,7 +22,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
     var sidebar: Color { color(rgb.1) }
     var ink: Color { color(rgb.2) }
 }
-private let destinations: [CityPortrait] = [.florence, .rome, .tokyo, .petersburg, .moscow, .athens, .nizhny, .newyork]
+private let destinations: [CityPortrait] = [.florence, .rome, .tokyo, .petersburg, .moscow, .athens, .nizhny, .newyork, .yerevan]
 
 struct DashboardView: View {
     @ObservedObject var weather: WeatherStore

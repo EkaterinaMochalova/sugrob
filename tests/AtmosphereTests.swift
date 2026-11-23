@@ -4,12 +4,14 @@ func checkAtmosphere() throws {
     let parse = ISO8601DateFormatter()
     let winter = parse.date(from: "2026-01-15T12:00:00Z")!
     let summer = parse.date(from: "2026-06-15T12:00:00Z")!
-    precondition(CityPortrait.destinations.count == 8)
-    precondition(Set(CityPortrait.destinations.map { $0.city.id }).count == 8)
+    precondition(CityPortrait.destinations.count == 9)
+    precondition(Set(CityPortrait.destinations.map { $0.city.id }).count == 9)
     precondition(CityMood.localTime(winter, city: CityPortrait.newyork.city) == "07:00")
     precondition(CityMood.localTime(summer, city: CityPortrait.newyork.city) == "08:00")
     precondition(CityMood.localTime(summer, city: CityPortrait.nizhny.city) == "15:00")
     precondition(CityMood(city: CityPortrait.newyork.city).soundAsset == nil)
+    precondition(CityMood.localTime(winter, city: CityPortrait.yerevan.city) == "16:00")
+    precondition(CityMood.localTime(summer, city: CityPortrait.yerevan.city) == "16:00")
     for portrait in CityPortrait.destinations {
         let city = portrait.city
         precondition(CityPortrait.matching(city) == portrait)
@@ -60,5 +62,5 @@ func checkAtmosphere() throws {
     precondition(CityMood(city: CityPortrait.florence.city, code: 61).soundAsset == "florence-market")
     precondition(CityMood(city: CityPortrait.rome.city, code: 71).soundAsset == "rome-pantheon")
     precondition(CityMood(city: CityPortrait.tokyo.city).soundAsset == "tokyo-street")
-    print("PASS: eight portraits, city matching, persistence, local clocks, DST, seasons, white nights, offline and precipitation")
+    print("PASS: nine portraits, city matching, persistence, local clocks, DST, seasons, white nights, offline and precipitation")
 }

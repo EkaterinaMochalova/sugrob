@@ -4,7 +4,7 @@ const fs = require('node:fs'), vm = require('node:vm'), path = require('node:pat
 const cameras = require('../app/live-cameras.json');
 test('Desktop platforms share the camera catalog and official player URLs', () => {
  assert.deepEqual(cameras, JSON.parse(fs.readFileSync(path.join(__dirname,'../../live-cameras.json'))));
- assert.equal(new Set(cameras.map(c=>c.id)).size,7);
+ assert.equal(new Set(cameras.map(c=>c.id)).size,8);
  for(const c of cameras) {
   assert.equal(new URL(c.watch).protocol,'https:');
   if(c.id==='moscow') {assert.ok(["https://www.geocam.ru/js/player/playerjs.html?file=https://rtsp2.videocam.online/live/iCity.stream/playlist.m3u8&poster=/images/photo/ic/it/icity.webp", "https://www.geocam.ru/js/player/playerjs.html?file=https://hls-spb03.timetechnology.ru:8080/2722/hls/fcdac098bed8c78a/live.m3u8&poster=/images/photo/fe/de/federation-tower-cam-3.webp"].includes(c.embed));continue;}

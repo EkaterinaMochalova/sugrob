@@ -231,7 +231,7 @@ struct WeatherSettingsView: View {
     var body: some View {
         Section("Побыть в другом городе") {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                ForEach(CityPortrait.destinations.filter { [.moscow, .rome, .petersburg, .tokyo, .florence, .athens, .nizhny, .newyork].contains($0) }, id: \.rawValue) { portrait in
+                ForEach(CityPortrait.destinations.filter { [.moscow, .rome, .petersburg, .tokyo, .florence, .athens, .nizhny, .newyork, .yerevan].contains($0) }, id: \.rawValue) { portrait in
                     Button {
                         atmosphere = true
                         weather.select(portrait.city)
