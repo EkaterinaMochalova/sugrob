@@ -9,12 +9,13 @@ import AppKit
 import ServiceManagement
 import SpriteKit
 import SwiftUI
+import ScreenCaptureKit
 
 let defaultSettings: [String: Any] = [
     "mode": Mode.snow.rawValue, "intensity": 1.0, "speed": 1.0, "size": 1.0, "opacity": 0.9,
     "paused": false, "behindWindows": false, "overFullScreen": false, "hideInScreenshots": true,
     "onWindows": true, "onGround": true, "cursor": true, "drift": 2500.0,
-    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "sunDust": true, "rainGlass": true, "dragClouds": false, "soundSource": "city",
+    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "sunDust": true, "rainGlass": true, "rainRefraction": false, "dragClouds": false, "soundSource": "city",
 ]
 
 extension Notification.Name {
@@ -764,7 +765,62 @@ final class CloudOverlayView: SKView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
+@MainActor
 final class Overlay {
+    private var captureTimer: Timer?
+    private var captureBusy = false
+    private var captureGeneration = 0
+    private var refractionEnabled = false
+    private var captureFilter: SCContentFilter?
+    private var displayID: CGDirectDisplayID = 0
+    private var captureRect = CGRect.zero
+    deinit { captureTimer?.invalidate() }
+
+    @MainActor private func updateRefraction(_ enabled: Bool) {
+        guard enabled != refractionEnabled else { return }
+        refractionEnabled = enabled; captureGeneration += 1
+        captureTimer?.invalidate(); captureTimer = nil; captureFilter = nil
+        scene.glass.setDesktop(nil)
+        guard enabled else { return }
+        captureTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.captureRefraction() }
+        }
+    }
+    @MainActor private func captureRefraction() async {
+        guard refractionEnabled, !captureBusy else { return }
+        guard scene.glass.count > 0, !scene.isPaused, CGPreflightScreenCaptureAccess() else {
+            scene.glass.setDesktop(nil); captureFilter = nil; return
+        }
+        captureBusy = true
+        let generation = captureGeneration
+        defer { captureBusy = false }
+        var image: CGImage?
+        if #available(macOS 14.0, *) {
+            do {
+                if captureFilter == nil {
+                    let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+                    guard generation == captureGeneration, refractionEnabled else { return }
+                    guard let display = content.displays.first(where: { $0.displayID == displayID }),
+                          let overlay = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else { return }
+                    captureFilter = SCContentFilter(display: display, excludingWindows: [overlay])
+                }
+                guard let filter = captureFilter else { return }
+                let config = SCStreamConfiguration()
+                let scale = min(1, 1920 / captureRect.width)
+                config.width = Int(captureRect.width * scale); config.height = Int(captureRect.height * scale)
+                config.showsCursor = false
+                image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+            } catch { captureFilter = nil }
+        } else {
+            let rect = captureRect, windowID = CGWindowID(window.windowNumber)
+            image = await Task.detached(priority: .utility) {
+                CGWindowListCreateImage(rect, .optionOnScreenBelowWindow, windowID, [.nominalResolution])
+            }.value
+        }
+        guard generation == captureGeneration, refractionEnabled, !scene.isPaused, scene.glass.count > 0 else { return }
+        scene.glass.setDesktop(image)
+    }
+
     let window: NSWindow
     let scene: SnowScene
 
@@ -784,6 +840,8 @@ final class Overlay {
         view.presentScene(scene)
         window.contentView = view
         window.orderFrontRegardless()
+        displayID = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
+        captureRect = CGDisplayBounds(displayID)
     }
 
     @MainActor
@@ -794,6 +852,7 @@ final class Overlay {
         let effect = weather.enabled ? weather.current?.effect : (Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
         scene.sun.configure(active: effect == .sunny, city: weather.city, size: scene.size, dust: d.object(forKey: "sunDust") as? Bool != false, strength: CGFloat(d.double(forKey: "opacity")))
         scene.glass.configure(active: (effect == .rain || effect == .storm) && d.object(forKey: "rainGlass") as? Bool != false, size: scene.size, strength: CGFloat(d.double(forKey: "opacity")))
+        updateRefraction(d.bool(forKey: "rainRefraction") && d.bool(forKey: "rainGlass") && !d.bool(forKey: "paused") && (effect == .rain || effect == .storm))
         scene.setMode(effect ?? .snow)
         scene.field.isHidden = weather.enabled && effect == nil
         if d.bool(forKey: "paused") || d.object(forKey: "lightning") as? Bool == false { scene.hideLightning() }
@@ -840,6 +899,8 @@ struct SettingsView: View {
     @AppStorage("appTheme") var theme = AppTheme.sage
     @AppStorage("dragClouds") var dragClouds = false
     @AppStorage("rainGlass") var rainGlass = true
+    @AppStorage("rainRefraction") var rainRefraction = false
+    @State private var captureDenied = false
     @AppStorage("sunDust") var sunDust = true
     @AppStorage("lightning") var lightning = true
     @State var openAtLogin = SMAppService.mainApp.status == .enabled
@@ -864,6 +925,17 @@ struct SettingsView: View {
             Section("Звуковой фон") { SoundControls(weather: weather) }
             Section("Дождь · капли на стекле") {
                 Toggle("Редкие стекающие капли", isOn: $rainGlass)
+                Toggle("Преломлять экран в каплях", isOn: Binding(get: { rainRefraction }, set: { value in
+                    if value && !CGPreflightScreenCaptureAccess() && !CGRequestScreenCaptureAccess() {
+                        captureDenied = true; rainRefraction = false
+                    } else { rainRefraction = value; captureDenied = false }
+                }))
+                Text("Кадры экрана обрабатываются только в памяти во время капель, без сохранения и отправки.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if captureDenied {
+                    Text("Разрешите Сугробу запись экрана в Системных настройках → Конфиденциальность и безопасность. Затем перезапустите приложение и включите преломление.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Button("Проверить капли") { NotificationCenter.default.post(name: .previewRainGlass, object: nil) }
                     .disabled(paused || !rainGlass || ![Mode.rain, .storm].contains(weather.enabled ? (weather.current?.effect ?? .snow) : mode))
                 Text("Во время дождя или грозы: мокрое стекло на 18 секунд, с перерывами.").font(.caption).foregroundStyle(.secondary)

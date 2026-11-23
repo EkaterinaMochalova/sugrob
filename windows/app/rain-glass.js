@@ -1,9 +1,10 @@
 'use strict';
 const waterLenses=[0,1,2].map(i=>{const im=new Image();im.src='assets/water-lens-'+i+'.png';return im;});
 window.RainGlass = class {
- constructor(){this.drops=[];this.wait=5;this.active=false;this.w=1;this.h=1;this.strength=1;this.age=100;}
+ constructor(){this.drops=[];this.wait=5;this.active=false;this.w=1;this.h=1;this.strength=1;this.age=100;this.desktop=null;}
  configure(active,w,h,strength){this.active=active;this.w=w;this.h=h;this.strength=strength;if(!active)this.clear();}
- clear(){this.drops=[];this.wait=5;this.age=100;}
+ setDesktop(image){this.desktop=image;}
+ clear(){this.desktop=null;this.drops=[];this.wait=5;this.age=100;}
  reduced(){return typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;}
  drop(x,y,r,moving){return {x,y,r,moving,age:0,hold:.8+Math.random()*2,phase:Math.random()*6.28,v:0,points:[],variant:Math.floor(Math.random()*3),absorbed:false};}
  burst(){
@@ -55,6 +56,16 @@ window.RainGlass = class {
    }
    c.globalAlpha=alpha*(d.moving?.9:.7);
    const im=waterLenses[d.variant],stretch=d.moving?1+Math.min(.4,d.v/400):1;
+   if(this.desktop){
+    const frame=this.desktop,rx=d.r,ry=d.r*stretch,sx=frame.naturalWidth/this.w,sy=frame.naturalHeight/this.h;
+    // Nested lens zones: stronger magnification at the centre, near-neutral at the rim.
+    // Draw outer-to-inner so the union remains an ellipse, never a screenshot rectangle.
+    for(let ring=10;ring>=1;ring--){
+     const r=ring/10,factor=.62+.42*r*r;
+     c.save();c.beginPath();c.ellipse(d.x,d.y,rx*r,ry*r,0,0,Math.PI*2);c.clip();
+     c.drawImage(frame,(d.x-rx*r*factor)*sx,(d.y-ry*r*factor)*sy,rx*r*2*factor*sx,ry*r*2*factor*sy,d.x-rx*r,d.y-ry*r,rx*r*2,ry*r*2);c.restore();
+    }
+   }
    if(im.complete&&im.naturalWidth)c.drawImage(im,d.x-d.r*1.55,d.y-d.r*1.55*stretch,d.r*3.1,d.r*3.1*stretch);
   }
   c.restore();

@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonitor, session, dialog } = require('electron');
+const { app, desktopCapturer, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonitor, session, dialog } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -7,6 +7,10 @@ const { createInterface } = require('node:readline');
 const { pathToFileURL } = require('node:url');
 const core = require('./core.js');
 const overlayPolicy = require('./overlay-policy.cjs');
+const {RefractionCapture}=require('./refraction.cjs');
+const refraction=new RefractionCapture(desktopCapturer);
+let refractionReadyAt=0;
+function refracting(){return process.platform==='win32' && Number(require('node:os').release().split('.')[2])>=19041 && settings?.rainRefraction && settings.rainGlass && !settings.paused && ['rain','storm'].includes(settings.enabled?core.currentEffect(weather.state.current):settings.mode);}
 const { cameras } = require('./live-camera.cjs');
 const { InlineCamera } = require('./inline-camera.cjs');
 let inlineCamera, library;
@@ -23,6 +27,8 @@ function snapshot() { return { settings, weather: weather.state, windowStatus, p
 function send(win, channel, data) { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, data); }
 function broadcast() {
   if (!settings) return;
+  applyWindows();
+  refraction.clear(); refractionReadyAt=Date.now()+500;
   send(settingsWindow, 'state', snapshot());
   for (const win of overlays.values()) send(win, 'state', { ...snapshot(), audioLeader: win === overlays.values().next().value });
   if (tray) { tray.setToolTip(settings.enabled ? `Сугроб · ${settings.city.name}` : 'Сугроб'); tray.setContextMenu(menu()); }
@@ -49,6 +55,7 @@ function update(patch) {
     try { app.setLoginItemSettings({ openAtLogin: settings.openAtLogin, path: process.execPath, args: ['--background'] }); }
     catch { settings.openAtLogin = before.openAtLogin; }
   }
+  if(before.rainRefraction!==settings.rainRefraction || before.paused!==settings.paused || before.mode!==settings.mode || before.enabled!==settings.enabled || before.rainGlass!==settings.rainGlass){refraction.clear();refractionReadyAt=Date.now()+500;}
   save(); applyWindows();
   if (before.enabled !== settings.enabled) weather.select(settings.enabled ? settings.city : null);
   broadcast(); return snapshot();
@@ -76,7 +83,7 @@ function showSettings() {
 }
 function applyWindows() {
   for (const [id, win] of overlays) {
-    overlayPolicy.configure(win, {hideCapture: settings.hideInScreenshots, canDrag: settings.dragClouds && !settings.paused && (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)==='clouds'});
+    overlayPolicy.configure(win, {hideCapture: settings.hideInScreenshots || refracting(), canDrag: settings.dragClouds && !settings.paused && (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)==='clouds'});
     const display = screen.getAllDisplays().find(d => d.id === id);
     const front = windows.find(w => w.id === foreground);
     const b = display?.bounds;
@@ -144,6 +151,16 @@ else {
     try { settings = core.normalize(JSON.parse(fs.readFileSync(settingsPath, 'utf8'))); } catch { settings = core.normalize(); }
     session.defaultSession.setPermissionRequestHandler((_web, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
+    ipcMain.handle('refraction', async e => {
+      authorized(e);
+      const entry=[...overlays.entries()].find(([,win])=>win.webContents===e.sender);
+      if(!entry || !refracting() || Date.now()<refractionReadyAt)return null;
+      applyWindows(); // Exclude overlays before sampling; never changes focus.
+      const generation=refraction.generation;
+      const frame=await refraction.get(entry[0]);
+      return refracting() && generation===refraction.generation ? frame : null;
+    });
+    setInterval(()=>{if(refraction.frame && Date.now()-refraction.at>700)refraction.clear();},500).unref();
     ipcMain.handle('state', e => { authorized(e); return { ...snapshot(), audioLeader: e.sender === overlays.values().next().value?.webContents }; });
     ipcMain.handle('update', (e, patch) => { authorized(e, true); return update(patch); });
     ipcMain.handle('select', (e, value, atmosphere, preserveSource) => {

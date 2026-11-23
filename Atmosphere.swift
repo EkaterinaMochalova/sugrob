@@ -465,7 +465,18 @@ final class RainGlassNode: SKNode {
         return SKTexture(image: image)
     }
     final class Drop {
-        let root = SKNode(), head = SKSpriteNode()
+        let root = SKNode(), head = SKSpriteNode(), lens = SKSpriteNode(color: .white, size: .zero)
+        let refraction = SKShader(source: """
+        void main() {
+            vec2 q = (v_tex_coord - vec2(0.5)) * 2.0;
+            float r = length(q);
+            float mask = 1.0 - smoothstep(0.84, 1.0, r);
+            vec2 warped = q * (0.62 + 0.42 * r * r);
+            vec2 uv = (center + warped * extent * 0.5) / screenSize;
+            vec4 color = texture2D(desktop, clamp(uv, vec2(0.0), vec2(1.0)));
+            gl_FragColor = vec4(color.rgb * mask, mask) * v_color_mix.a;
+        }
+        """)
         let trails: [SKShapeNode]
         let moving: Bool
         var age: CGFloat = 0, velocity: CGFloat = 0
@@ -480,8 +491,22 @@ final class RainGlassNode: SKNode {
             for trail in trails { trail.lineCap = .butt; root.addChild(trail) }
             head.texture = RainGlassNode.textures.randomElement()
             head.isHidden = head.texture == nil
-            root.addChild(head)
+            refraction.uniforms = [SKUniform(name: "center", vectorFloat2: .zero),
+                SKUniform(name: "extent", vectorFloat2: .zero),
+                SKUniform(name: "screenSize", vectorFloat2: SIMD2<Float>(1,1))]
+            lens.shader = refraction; lens.isHidden = true
+            root.addChild(lens); root.addChild(head)
         }
+    }
+    private var desktop: SKTexture?
+    func setDesktop(_ image: CGImage?) {
+        desktop = image.map { SKTexture(cgImage: $0) }
+        for d in drops { bindDesktop(d) }
+    }
+    private func bindDesktop(_ d: Drop) {
+        d.lens.isHidden = desktop == nil
+        if let desktop { d.refraction.addUniform(SKUniform(name: "desktop", texture: desktop)) }
+        else { d.refraction.removeUniformNamed("desktop") }
     }
     private var drops: [Drop] = []
     private var active = false
@@ -499,7 +524,7 @@ final class RainGlassNode: SKNode {
     }
     private func add(_ point: CGPoint, _ radius: CGFloat, moving: Bool) {
         let d = Drop(point: point, radius: radius, moving: moving)
-        addChild(d.root); drops.append(d)
+        bindDesktop(d); addChild(d.root); drops.append(d)
     }
     private func burst() {
         guard area.width > 0, area.height > 0 else { return }
@@ -547,6 +572,11 @@ final class RainGlassNode: SKNode {
                 trail.alpha = max(0,1-(age-b.time)/2.4)
             }
             let stretch: CGFloat = d.moving ? 1+min(0.4,d.velocity/400) : 1
+            d.lens.position = d.point
+            d.lens.size = CGSize(width: d.radius*2, height: d.radius*2*stretch)
+            d.refraction.uniformNamed("center")?.vectorFloat2Value = SIMD2(Float(d.point.x), Float(d.point.y))
+            d.refraction.uniformNamed("extent")?.vectorFloat2Value = SIMD2(Float(d.lens.size.width), Float(d.lens.size.height))
+            d.refraction.uniformNamed("screenSize")?.vectorFloat2Value = SIMD2(Float(area.width), Float(area.height))
             d.head.position = d.point
             d.head.size = CGSize(width: d.radius*3.1, height: d.radius*3.1*stretch)
             d.head.alpha = d.moving ? 0.9 : 0.7

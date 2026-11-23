@@ -6,7 +6,7 @@ const path = require('node:path');
 const C = require('../app/core.js');
 function renderer() {
   let environment, clear, preview, lightningPreview;
-  const handlers = {}, saved = [], input = [];
+  const handlers = {}, saved = [], input = [], timers = [];
   const drawing = new Proxy({}, { get(target, prop) {
     if (prop in target) return target[prop];
     if (String(prop).startsWith('create')) return () => ({ addColorStop() {} });
@@ -16,11 +16,11 @@ function renderer() {
   const initial = { settings: C.normalize(), weather: { current: null } };
   const context = { document: { getElementById: canvas, createElement: canvas }, innerWidth: 1920, innerHeight: 1080,
     Soundscape: class { sync() {} strike() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
-    devicePixelRatio: 1.5, addEventListener(name, fn) { handlers[name] = fn; }, requestAnimationFrame() {}, console,
+    setInterval(fn){timers.push(fn);}, devicePixelRatio: 1.5, addEventListener(name, fn) { handlers[name] = fn; }, requestAnimationFrame() {}, console,
     sugrob: { onRainGlassPreview() {}, cloudInteractive(v) { input.push(v); }, saveCloudLevel:async(v,y)=>{saved.push([v,y]);}, onResetClouds() {}, onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
   for (const file of ['core.js', 'art.js', 'sunlight.js', 'rain-glass.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
-  return { handlers, saved, input, run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
+  return { timers, handlers, saved, input, run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
 }
 test('Canvas renderer handles all portraits and weather modes with bounded particle counts', () => {
   const r = renderer();
@@ -252,4 +252,26 @@ test('Wet-glass drops collect pinned beads, grow, leave fading trails and clear 
  assert.equal(r.run('glass.drops.length'),1);assert.ok(r.run('glass.drops[0].r')>8);
  r.run('for(let i=0;i<50;i++)glass.tick(.05)');assert.ok(r.run('glass.drops[0].points.length')>1);
  r.run('glass.age=19;glass.wait=10;glass.tick(.05)');assert.equal(r.run('glass.drops.length'),0);
+});
+
+test('Refraction clips screen samples to water lenses and drops them immediately on pause or dry weather', async()=>{
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'rain',rainRefraction:true}),weather:{current:null}})})`);
+ r.run('glass.preview();glass.tick(1);glass.setDesktop(new Image());draw()');
+ assert.ok(r.run('glass.desktop!==null'));
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'rain',rainRefraction:true,paused:true}),weather:{current:null}})})`);
+ assert.equal(r.run('glass.desktop'),null);
+ r.run('glass.setDesktop(new Image());state.settings.paused=false;state.settings.rainRefraction=false');
+ await r.timers[0]();assert.equal(r.run('glass.desktop'),null);
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'sunny',rainRefraction:true}),weather:{current:null}})})`);
+ assert.equal(r.run('glass.desktop'),null);assert.equal(r.run('glass.drops.length'),0);
+});
+test('Late captured frames cannot restore refraction after disabling it', async()=>{
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'rain',rainRefraction:true}),weather:{current:null}})})`);
+ r.run('glass.preview();var resolveFrame;api.captureRefraction=()=>new Promise(resolve=>resolveFrame=resolve);Image.prototype.decode=async()=>{}');
+ const pending=r.timers[0]();
+ r.run('state.settings.rainRefraction=false');await r.timers[0]();
+ r.run('resolveFrame("data:image/png;base64,test")');await pending;
+ assert.equal(r.run('glass.desktop'),null);
 });

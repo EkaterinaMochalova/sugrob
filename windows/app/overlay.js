@@ -1,4 +1,5 @@
 'use strict';
+let refractionPending=false,refractionEpoch=0;
 const C = window.Sugrob, art = window.SugrobArt, api = window.sugrob;
 const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
 const background = document.createElement('canvas'), bg = background.getContext('2d');
@@ -17,7 +18,7 @@ function resize() {
   w = innerWidth; h = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
   canvas.width = Math.ceil(w * dpr); canvas.height = Math.ceil(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   background.width = w; background.height = h; moodKey = ''; resting = []; updateMood();
-  if(state)glass.configure((mode==='rain'||mode==='storm')&&state.settings.rainGlass!==false,w,h,state.settings.opacity);
+  if(state){clearRefraction();glass.configure((mode==='rain'||mode==='storm')&&state.settings.rainGlass!==false,w,h,state.settings.opacity);}
 }
 function updateMood() {
   if (!state) return;
@@ -33,7 +34,7 @@ function renderState(next) {
   const key = String(mode);
   if (key !== modeKey) { finishCloudDrag(); stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
-  glass.configure((mode==='rain'||mode==='storm')&&s.rainGlass!==false,w,h,s.opacity);
+  clearRefraction();glass.configure((mode==='rain'||mode==='storm')&&s.rainGlass!==false,w,h,s.opacity);
   sunlight.configure(mode === 'sunny',s);
   sounds.sync(next.audioLeader && s.sound && !s.paused, C.soundTrack(s,next.weather.current), s.soundSource === 'weather' ? s.weatherVolume : s.volume, s.soundSource === 'weather' && s.lightning !== false,mode);
 }
@@ -263,3 +264,19 @@ function frame(now) {
   draw();
 }
 addEventListener('resize', resize); resize(); requestAnimationFrame(frame);
+
+// Only the trusted local overlay receives screen pixels. At most one request/decode in flight.
+
+function clearRefraction(){refractionEpoch++;glass.setDesktop(null);}
+setInterval(async()=>{
+ const allowed=state?.settings.rainRefraction&&!state.settings.paused&&glass.active&&glass.drops.length>0;
+ if(!allowed){clearRefraction();return;}
+ if(refractionPending||!api.captureRefraction)return;
+ refractionPending=true;const epoch=refractionEpoch;
+ try{
+  const data=await api.captureRefraction();
+  if(!data){glass.setDesktop(null);return;}
+  const image=new Image();image.src=data;await image.decode();
+  if(epoch===refractionEpoch&&state?.settings.rainRefraction&&!state.settings.paused&&glass.active&&glass.drops.length)glass.setDesktop(image);
+ }catch{glass.setDesktop(null);}finally{refractionPending=false;}
+},250);
