@@ -144,7 +144,7 @@ struct DashboardView: View {
                 }.pickerStyle(.menu)
                 Text("Эффект выбран вручную. Камеры можно смотреть независимо от него.").font(.caption).foregroundStyle(.secondary)
             } else {
-                Text("Осадки определяются погодой выбранного города.").font(.caption).foregroundStyle(.secondary)
+                Text("Эффект определяется погодой выбранного города.").font(.caption).foregroundStyle(.secondary)
             }
             HStack { Text("Количество").font(.caption).frame(width: 80, alignment: .leading); Slider(value: $intensity, in: 0.1...3) }
             HStack { Text("Скорость").font(.caption).frame(width: 80, alignment: .leading); Slider(value: $speed, in: 0.3...2.5) }
@@ -204,7 +204,7 @@ struct DashboardView: View {
     private func weatherCard(_ city: WeatherCity) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Погода на рабочем столе", systemImage: "cloud.rain").font(.system(size: 14, weight: .medium))
+                Label("Погода на рабочем столе", systemImage: weather.current?.effect == .sunny ? "sun.max" : "cloud.rain").font(.system(size: 14, weight: .medium))
                 Spacer()
                 Text(weather.enabled ? "АВТО" : "ВЫКЛ").font(.system(size: 10, weight: .semibold))
             }

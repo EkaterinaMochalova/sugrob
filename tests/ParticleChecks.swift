@@ -54,3 +54,15 @@ extension SnowScene {
     }
 }
 SnowScene(screen: NSScreen.main!).checkWindowCrossing()
+
+let light = SunlightNode()
+light.configure(active: false, city: nil, size: CGSize(width: 1440, height: 900), dust: true, strength: 0.9)
+precondition(light.isHidden)
+light.preview(); light.tick(8)
+precondition(!light.isHidden)
+if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { precondition(light.children.suffix(32).contains { $0.alpha > 0 }) }
+light.tick(13); precondition(light.isHidden)
+light.configure(active: false, city: nil, size: CGSize(width: 1440, height: 900), dust: false, strength: 0.9)
+light.preview(); light.tick(8)
+precondition(!light.isHidden && light.children.suffix(32).allSatisfy { $0.alpha == 0 })
+print("PASS: sunlight preview expires and dust respects toggle")

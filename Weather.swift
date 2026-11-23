@@ -1,14 +1,15 @@
 import Foundation
 import SwiftUI
 
-extension Notification.Name { static let lightningStrike = Notification.Name("SugrobLightningStrike"); static let previewLightning = Notification.Name("SugrobPreviewLightning"); static let previewAtmosphere = Notification.Name("SugrobPreviewAtmosphere") }
+extension Notification.Name { static let previewSunlight = Notification.Name("SugrobPreviewSunlight"); static let lightningStrike = Notification.Name("SugrobLightningStrike"); static let previewLightning = Notification.Name("SugrobPreviewLightning"); static let previewAtmosphere = Notification.Name("SugrobPreviewAtmosphere") }
 
 enum Mode: String, CaseIterable, Identifiable {
-    case snow, leaves, rain, petals, clouds, storm
+    case snow, leaves, rain, petals, clouds, storm, sunny
     var soundAsset: String? { self == .rain ? "weather-rain" : self == .storm ? "weather-storm" : nil }
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .sunny: return "Ясно"
         case .storm: return "Гроза"
         case .clouds: return "Облака"
         case .snow: return "Снег"
@@ -38,6 +39,7 @@ struct CurrentWeather: Decodable {
     var precipitation: Double? = nil
 
     var effect: Mode? {
+        if [0, 1].contains(weather_code) { return .sunny }
         if [2, 3].contains(weather_code) { return .clouds }
         guard let precipitation, precipitation.isFinite, precipitation > 0 else { return nil }
         return codedEffect

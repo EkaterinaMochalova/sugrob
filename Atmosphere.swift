@@ -365,3 +365,92 @@ final class AtmosphereNode: SKNode {
         node.run(.sequence([.group([drift, .sequence([.fadeAlpha(to: 0.72, duration: 3), .wait(forDuration: duration - 7), .fadeOut(withDuration: 4)])]), .removeFromParent()]))
     }
 }
+
+// Feathered ellipses: every pixel at the texture boundary is transparent.
+final class SunlightNode: SKNode {
+    private static let vapor: SKTexture = {
+        let pixels = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 256, pixelsHigh: 256, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 1024, bitsPerPixel: 32)!
+        let data = pixels.bitmapData!
+        for y in 0..<256 { for x in 0..<256 {
+            let u = (Double(x) - 127.5) / 127.5, v = (Double(y) - 127.5) / 127.5
+            let alpha = pow(max(0, 1 - u*u - v*v), 4)
+            let i = y * 1024 + x * 4
+            let a = UInt8(alpha * 255)
+            data[i] = a; data[i+1] = a; data[i+2] = a; data[i+3] = a
+        } }
+        return SKTexture(cgImage: pixels.cgImage!)
+    }()
+    private let glow = SKSpriteNode(texture: vapor)
+    private var rays: [SKSpriteNode] = []
+    private var dust: [SKSpriteNode] = []
+    private var active = false, dustEnabled = true, test = false
+    private var city: WeatherCity?
+    private var canvas = CGSize.zero
+    private var clock: CGFloat = 0, episode: CGFloat = -1, wait: CGFloat = .random(in: 180...420)
+    private var strength: CGFloat = 0.9
+    override init() {
+        super.init()
+        addChild(glow)
+        for _ in 0..<3 { let ray = SKSpriteNode(texture: Self.vapor); rays.append(ray); addChild(ray) }
+        for _ in 0..<32 { let dot = SKSpriteNode(texture: Self.vapor); dust.append(dot); addChild(dot) }
+        isHidden = true
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    func configure(active: Bool, city: WeatherCity?, size: CGSize, dust: Bool, strength: CGFloat) {
+        if self.active != active || self.city != city { episode = -1; test = false; wait = .random(in: 180...420) }
+        self.active = active; self.city = city; canvas = size; dustEnabled = dust; self.strength = strength
+        render()
+    }
+    func preview() { test = true; episode = 0; render() }
+    private var light: MoodLight {
+        if test { return .day }
+        if let city { return CityMood(city: city).light }
+        let h = Calendar.current.component(.hour, from: Date())
+        return h < 6 || h >= 21 ? .night : h < 9 ? .dawn : h >= 17 ? .dusk : .day
+    }
+    func tick(_ dt: CGFloat) {
+        let reduced = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if !reduced { clock += dt }
+        if episode >= 0 {
+            episode += dt
+            if episode >= 20 { episode = -1; test = false; wait = .random(in: 180...420) }
+        } else if active && dustEnabled && light != .night && !reduced {
+            wait -= dt
+            if wait <= 0 { episode = 0 }
+        }
+        render()
+    }
+    private func render() {
+        isHidden = !active && !test
+        guard !isHidden else { return }
+        let night = light == .night
+        let tint: NSColor = night ? NSColor(red: 0.72, green: 0.8, blue: 1, alpha: 1) : light == .dusk ? NSColor(red: 1, green: 0.65, blue: 0.31, alpha: 1) : light == .dawn ? NSColor(red: 1, green: 0.85, blue: 0.56, alpha: 1) : NSColor(red: 1, green: 0.97, blue: 0.86, alpha: 1)
+        let scale = min(canvas.width / 1000, canvas.height / 700)
+        let pulse = episode >= 0 ? min(1, episode / 4) * min(1, (20 - episode) / 5) : 0
+        glow.color = tint; glow.colorBlendFactor = 1
+        glow.size = CGSize(width: 640 * scale, height: 460 * scale)
+        glow.position = CGPoint(x: 25 * scale, y: canvas.height - 20 * scale)
+        glow.alpha = (night ? 0.035 : 0.14 + pulse * 0.04) * strength
+        for (i, ray) in rays.enumerated() {
+            ray.color = tint; ray.colorBlendFactor = 1
+            ray.size = CGSize(width: (120 + CGFloat(i) * 45 + pulse * 55) * scale, height: (560 + CGFloat(i) * 90) * scale)
+            ray.position = CGPoint(x: (135 + CGFloat(i) * 75) * scale, y: canvas.height - (175 + CGFloat(i) * 45) * scale)
+            ray.zRotation = 0.4 + CGFloat(i) * 0.11 + sin(clock / 22 + CGFloat(i)) * 0.025
+            ray.alpha = night ? 0 : (0.055 + pulse * 0.08) * strength
+        }
+        let reduced = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        for (i, dot) in dust.enumerated() {
+            let phase = CGFloat(i) * 2.39996
+            let u = sin(phase + clock * 0.11) * 0.85
+            let v = sin(phase * 1.7 + clock * 0.06) * 0.9
+            let mask = max(0, 1 - u*u - v*v)
+            let x = u * 75, y = v * 260
+            dot.position = CGPoint(x: (210 + x * cos(0.5) - y * sin(0.5)) * scale,
+                                   y: canvas.height - 240 * scale + (x * sin(0.5) + y * cos(0.5)) * scale)
+            let d = (1.5 + CGFloat(i % 5) * 0.55) * scale
+            dot.size = CGSize(width: d, height: d)
+            dot.color = tint; dot.colorBlendFactor = 1
+            dot.alpha = night || !dustEnabled || reduced ? 0 : pulse * mask * 0.36 * strength
+        }
+    }
+}

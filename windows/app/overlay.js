@@ -8,6 +8,7 @@ let stormWait = 8, bolt = null, previewBolt = null, lastPreview = -100;
 let beads = [];
 let falling = [], resting = [], motes = [], windows = [], cursor = { x: -1000, y: -1000 };
 const sounds = new window.Soundscape();
+const sunlight = new window.Sunlight();
 const photos = Object.fromEntries(['autumn','olive','pine','maple','cherry','gull'].map(name => { const image = new Image(); image.src = `assets/${name}.png`; return [name, image]; }));
 let events = [], eventWait = 1;
 let lastFrame = 0, spawnDebt = 0, moteWait = 2, time = 0, lastClock = 0;
@@ -29,6 +30,7 @@ function renderState(next) {
   const key = String(mode);
   if (key !== modeKey) { stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
+  sunlight.configure(mode === 'sunny',s);
   sounds.sync(next.audioLeader && s.sound && !s.paused, C.soundTrack(s,next.weather.current), s.soundSource === 'weather' ? s.weatherVolume : s.volume, s.soundSource === 'weather' && s.lightning !== false,mode);
 }
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
@@ -112,13 +114,14 @@ function makeBolt() {
   }
   return {age:0,points,branches};
 }
+api.onSunlightPreview(() => { if(state && !state.settings.paused) sunlight.preview(); });
 api.onLightningPreview(() => {
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(!state || state.settings.paused || !state.settings.lightning || reduced || time-lastPreview<3) return;
   lastPreview=time; previewBolt=makeBolt(); sounds.strike();
 });
 function tick(dt) {
-  const s = state.settings; time += dt;
+  const s = state.settings; time += dt; sunlight.tick(dt);
   if(previewBolt) { previewBolt.age+=dt; if(previewBolt.age>=.65 || !s.lightning) previewBolt=null; }
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (mode === 'storm' && s.lightning !== false && !reduced) {
@@ -130,7 +133,7 @@ function tick(dt) {
     }
   } else { bolt = null; stormWait = 8; }
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }
-  if (mode) {
+  if (mode && mode !== 'sunny') {
     spawnDebt += dt * (mode === 'clouds' ? .025 : (mode === 'rain' || mode === 'storm') ? 110 : 42) * s.intensity * w / 1440;
     while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 7 : 900)) { spawn(s); spawnDebt--; }
     spawnDebt = Math.min(spawnDebt, 4);
@@ -186,6 +189,7 @@ function tick(dt) {
 }
 function draw() {
   const s = state.settings; ctx.clearRect(0, 0, w, h);
+  sunlight.draw(ctx,w,h);
   if (false && mood) { ctx.globalAlpha = s.strength * (.82 + Math.sin(time / 14) * .17); ctx.drawImage(background, 0, 0); ctx.globalAlpha = s.strength;
     for (const p of motes) {
       const alpha = .72 * Math.min(1, p.age / 3, (p.duration - p.age) / 4);

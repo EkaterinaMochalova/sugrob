@@ -14,7 +14,7 @@ let defaultSettings: [String: Any] = [
     "mode": Mode.snow.rawValue, "intensity": 1.0, "speed": 1.0, "size": 1.0, "opacity": 0.9,
     "paused": false, "behindWindows": false, "overFullScreen": false, "hideInScreenshots": true,
     "onWindows": true, "onGround": true, "cursor": true, "drift": 2500.0,
-    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "soundSource": "city",
+    "showInMenuBar": true, "showInDock": false, "cityAtmosphere": false, "atmosphereStrength": 0.65, "atmosphereSound": false, "atmosphereVolume": 0.25, "weatherVolume": 0.25, "sunDust": true, "soundSource": "city",
 ]
 
 extension Notification.Name {
@@ -98,6 +98,8 @@ let cloudTextures: [SKTexture] = ["stratus", "ragged", "cirrus"].compactMap { na
 }
 func makeLook(_ mode: Mode) -> Look {
     switch mode {
+    case .sunny:
+        return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0...0, rate: 0, fall: 0, drag: 0, sway: 0, spin: 0, size: 1...1, bump: 0, settles: false, solidDrift: false)
     case .clouds:
         return Look(texture: cloudTexture, aspect: cloudTexture.size().width / cloudTexture.size().height, colors: [.white], alpha: 0.22...0.36,
                     rate: 0.025, fall: 0, drag: 0, sway: 0, spin: 0, size: 90...140,
@@ -233,6 +235,7 @@ final class SnowScene: SKScene {
             lastWindowRects = []
         }
     }
+    let sun = SunlightNode()
     let atmosphere = AtmosphereNode()
     let field = SKNode() // все частицы; его прозрачность — настройка «Непрозрачность»
 
@@ -260,6 +263,7 @@ final class SnowScene: SKScene {
         super.init(size: screen.frame.size)
         backgroundColor = .clear
         scaleMode = .resizeFill
+        addChild(sun)
         addChild(atmosphere)
         addChild(field)
         field.addChild(ground.shape)
@@ -370,6 +374,7 @@ final class SnowScene: SKScene {
         let raw = CGFloat(min(currentTime - lastTime, 0.05))
         lastTime = currentTime
         guard raw > 0, !isPaused else { return }
+        sun.tick(raw)
         atmosphere.tick(TimeInterval(raw))
         updateLightning(raw)
         let dt = raw * speedFactor
@@ -726,6 +731,7 @@ final class Overlay {
             code: weather.current?.weather_code, size: scene.size,
             strength: d.double(forKey: "atmosphereStrength"), paused: d.bool(forKey: "paused"))
         let effect = weather.enabled ? weather.current?.effect : (Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
+        scene.sun.configure(active: effect == .sunny, city: weather.city, size: scene.size, dust: d.object(forKey: "sunDust") as? Bool != false, strength: CGFloat(d.double(forKey: "opacity")))
         scene.setMode(effect ?? .snow)
         scene.field.isHidden = weather.enabled && effect == nil
         if d.bool(forKey: "paused") || d.object(forKey: "lightning") as? Bool == false { scene.hideLightning() }
@@ -769,6 +775,7 @@ struct SettingsView: View {
     @AppStorage("showInMenuBar") var showInMenuBar = true
     @AppStorage("showInDock") var showInDock = false
     @AppStorage("appTheme") var theme = AppTheme.sage
+    @AppStorage("sunDust") var sunDust = true
     @AppStorage("lightning") var lightning = true
     @State var openAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -790,6 +797,11 @@ struct SettingsView: View {
                 }
             }
             Section("Звуковой фон") { SoundControls(weather: weather) }
+            Section("Ясно · солнечный свет") {
+                Toggle("Пыль в лучах", isOn: $sunDust)
+                Button("Приоткрыть окно · тест") { NotificationCenter.default.post(name: .previewSunlight, object: nil) }.disabled(paused)
+                Text("Тест дневного света — 20 секунд. Автоматически: раз в 3–7 минут, только днём при ясной погоде. Ночью — прохладное свечение без пыли.").font(.caption).foregroundStyle(.secondary)
+            }
             Section("Гроза") {
                 Toggle("Вспышки молнии", isOn: $lightning)
                 Button("Проверить молнию") { NotificationCenter.default.post(name: .previewLightning, object: nil) }
@@ -882,6 +894,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         center.addObserver(forName: .clearAll, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.clearAll() }
+        }
+        center.addObserver(forName: .previewSunlight, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.overlays.filter { !$0.scene.isPaused }.forEach { $0.scene.sun.preview() } }
         }
         center.addObserver(forName: .lightningStrike, object: nil, queue: .main) { [weak self] note in
             guard let scene = note.object as? SnowScene else { return }

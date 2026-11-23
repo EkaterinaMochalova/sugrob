@@ -46,7 +46,7 @@ final class StubProtocol: URLProtocol {
         for code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82] {
             precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1).effect == .rain)
         }
-        for code in [0, 1, 45, 48, 999] {
+        for code in [45, 48, 999] {
             precondition(CurrentWeather(temperature_2m: 10, weather_code: code, precipitation: 0.1).effect == nil)
         }
         let config = URLSessionConfiguration.ephemeral
@@ -99,7 +99,7 @@ final class StubProtocol: URLProtocol {
         StubProtocol.handler = { _ in (200, #"{"current":{"precipitation":0.1,"temperature_2m":20,"weather_code":0}}"#) }
         store.refresh()
         await waitFor { !store.loading }
-        precondition(store.error == nil && store.current != nil && store.current?.effect == nil)
+        precondition(store.error == nil && store.current != nil && store.current?.effect == .sunny)
 
         // A cancelled request must not turn weather back on or replace the next city.
         store.refresh()

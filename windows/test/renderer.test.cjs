@@ -16,9 +16,9 @@ function renderer() {
   const context = { document: { getElementById: canvas, createElement: canvas }, innerWidth: 1920, innerHeight: 1080,
     Soundscape: class { sync() {} strike() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
     devicePixelRatio: 1.5, addEventListener() {}, requestAnimationFrame() {}, console,
-    sugrob: { onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
+    sugrob: { onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
-  for (const file of ['core.js', 'art.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
+  for (const file of ['core.js', 'art.js', 'sunlight.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
   return { run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
 }
 test('Canvas renderer handles all portraits and weather modes with bounded particle counts', () => {
@@ -168,7 +168,7 @@ test('Clouds fill the upper band without reaching screen center at maximum size'
 test('Lightning button previews once in clear weather without switching source', () => {
  const r=renderer();
  r.run(`renderState(${JSON.stringify({settings:C.normalize({enabled:true,city:C.cities[0]}),weather:{current:{weather_code:0,precipitation:0}}})})`);
- r.lightningPreview(); assert.equal(r.run('previewBolt.points.length'),65); assert.equal(r.run('mode'),null);
+ r.lightningPreview(); assert.equal(r.run('previewBolt.points.length'),65); assert.equal(r.run('mode'),'sunny');
  r.run('tick(.1)'); r.lightningPreview(); assert.equal(r.run('previewBolt.age'),.1);
  r.run('for(let i=0;i<15;i++)tick(.05)'); assert.equal(r.run('previewBolt'),null);
  r.run('time+=3; state.settings.paused=true'); r.lightningPreview(); assert.equal(r.run('previewBolt'),null);
@@ -183,4 +183,21 @@ test('Lightning spans screen height with fine branches and bounded geometry',()=
   assert.equal(r.run('bolt.branches.length'),27);
   assert.ok(r.run('[bolt.points,...bolt.branches.map(b=>b.points)].flat().every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)&&x>=0&&x<=w&&y>=0&&y<=h)'));
  }
+});
+
+test('Sunlight preview lasts 20s, stays bounded and keeps weather selection',()=>{
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'snow',sunDust:true}),weather:{current:null}})})`);
+ r.run('sunlight.preview();tick(8);draw()');
+ assert.equal(r.run('mode'),'snow');assert.equal(r.run('sunlight.test'),true);
+ r.run('tick(13)');assert.equal(r.run('sunlight.test'),false);assert.equal(r.run('sunlight.age'),-1);
+ assert.ok(r.run('sunlight.wait>=180 && sunlight.wait<=420'));
+ r.run('sunlight.preview();state.settings.paused=true;frame(1);frame(1000)');assert.equal(r.run('sunlight.age'),0);
+});
+test('Sunlight automatic dust is daytime only and respects switch',()=>{
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'sunny',city:C.cities[0],sunDust:true}),weather:{current:null}})})`);
+ r.run("C.mood=()=>({light:'night'});sunlight.wait=0;sunlight.tick(1)");assert.equal(r.run('sunlight.age'),-1);
+ r.run("C.mood=()=>({light:'day'});sunlight.tick(1)");assert.equal(r.run('sunlight.age'),0);
+ r.run('sunlight.tick(21);sunlight.settings.sunDust=false;sunlight.wait=0;sunlight.tick(1)');assert.equal(r.run('sunlight.age'),-1);
 });

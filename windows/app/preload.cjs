@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('sugrob', {
   select: (city, atmosphere, preserveSource = true) => ipcRenderer.invoke('select', city, atmosphere, preserveSource),
   search: query => ipcRenderer.invoke('search', query),
   refresh: () => ipcRenderer.invoke('refresh'),
+  previewSunlight: () => ipcRenderer.invoke('preview-sunlight'),
+  onSunlightPreview: callback => { const listener=()=>callback();ipcRenderer.on('preview-sunlight',listener);return ()=>ipcRenderer.removeListener('preview-sunlight',listener); },
   previewLightning: () => ipcRenderer.invoke('preview-lightning'),
   onLightningPreview: callback => { const listener = () => callback(); ipcRenderer.on('preview-lightning', listener); return () => ipcRenderer.removeListener('preview-lightning', listener); },
   preview: () => ipcRenderer.invoke('preview'),
