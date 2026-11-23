@@ -158,3 +158,13 @@ test('Weather audio follows manual or city weather and never falls back to city 
  assert.equal(C.soundTrack({...s,enabled:false,mode:'snow'},null),null);
  assert.equal(C.soundTrack({...s,soundSource:'city'},null),'rome-pantheon');
 });
+
+test('Every displayed theme survives saving; sunny remains a weather effect',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const html=fs.readFileSync(path.join(__dirname,'../app/settings.html'),'utf8');
+ const select=html.match(/<select id="theme">([\s\S]*?)<\/select>/)[1];
+ const values=[...select.matchAll(/value="([^"]+)"/g)].map(m=>m[1]);
+ assert.deepEqual(values,['sand','sage','blue','rocks','clouds']);
+ for(const theme of values)assert.equal(C.normalize({theme}).theme,theme);
+ assert.equal(C.normalize({mode:'sunny'}).mode,'sunny');
+});

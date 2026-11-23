@@ -38,13 +38,25 @@ function cloudAt(x,y) {
  if(!state?.settings.dragClouds||state.settings.paused||mode!=='clouds')return null;
  return [...falling].reverse().find(p=>{if(p.kind!=='clouds')return false;const aspect=p.variant===1?2:3;return ((x-p.x)/(p.size*aspect*p.stretch*.42))**2+((y-p.y)/(p.size*.34))**2<=1;})||null;
 }
-function cloudHitMode(){const next=!!cloudDrag||!!cloudAt(cursor.x,cursor.y);if(next!==cloudInput){cloudInput=next;api.cloudInteractive(next);}}
+function cloudHitMode(){const next=!!cloudDrag||!!cloudAt(cursor.x,cursor.y);canvas.style.cursor=cloudDrag?'grabbing':next?'grab':'default';if(next!==cloudInput){cloudInput=next;api.cloudInteractive(next);}}
 function finishCloudDrag(){if(!cloudDrag)return;const p=cloudDrag.cloud;cloudDrag=null;api.saveCloudLevel(p.variant,C.clamp(p.y/h,0,1)).catch(()=>{});}
-addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=cloudAt(e.clientX,e.clientY);if(!p)return;cloudDrag={cloud:p,dx:e.clientX-p.x,dy:e.clientY-p.y};canvas.setPointerCapture(e.pointerId);e.preventDefault();});
-addEventListener('pointermove',e=>{cursor={x:e.clientX,y:e.clientY};if(cloudDrag){const p=cloudDrag.cloud;p.x=C.clamp(e.clientX-cloudDrag.dx,10,w-10);p.y=C.clamp(e.clientY-cloudDrag.dy,10,h-10);}cloudHitMode();});
-addEventListener('pointerup',()=>{finishCloudDrag();cloudHitMode();});
-addEventListener('pointercancel',()=>{finishCloudDrag();cloudHitMode();});
-addEventListener('blur',()=>{finishCloudDrag();if(cloudInput){cloudInput=false;api.cloudInteractive(false);}});
+// Mouse events also work when Electron forwards native WM_MOUSEMOVE without pointer events.
+addEventListener('mousedown',e=>{
+ if(e.button!==0)return;const p=cloudAt(e.clientX,e.clientY);if(!p)return;
+ cloudDrag={cloud:p,dx:e.clientX-p.x,dy:e.clientY-p.y};
+ cursor={x:e.clientX,y:e.clientY};cloudHitMode();e.preventDefault();
+});
+function moveCloudMouse(e){
+ cursor={x:e.clientX,y:e.clientY};
+ if(cloudDrag){
+  if(e.buttons===0){finishCloudDrag();}
+  else {const p=cloudDrag.cloud;p.x=C.clamp(e.clientX-cloudDrag.dx,10,w-10);p.y=C.clamp(e.clientY-cloudDrag.dy,10,h-10);}
+ }
+ cloudHitMode();
+}
+addEventListener('mousemove',moveCloudMouse);
+addEventListener('mouseup',()=>{finishCloudDrag();cloudHitMode();});
+addEventListener('blur',()=>{finishCloudDrag();cursor={x:-1000,y:-1000};cloudHitMode();});
 api.onResetClouds(()=>{cloudDrag=null;for(const p of falling)if(p.kind==='clouds')p.y=Math.min(150,h*(.08+Math.random()*.08));cloudHitMode();});
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {
@@ -203,6 +215,11 @@ function tick(dt) {
 function draw() {
   const s = state.settings; ctx.clearRect(0, 0, w, h);
   sunlight.draw(ctx,w,h);
+  if(s.dragClouds && !s.paused && mode==='clouds'){
+    ctx.save();ctx.globalAlpha=1;ctx.fillStyle='rgba(255,255,255,0.004)';
+    for(const p of falling){ctx.beginPath();ctx.ellipse(p.x,p.y,p.size*(p.variant===1?2:3)*p.stretch*.42,p.size*.34,0,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+  }
   if (false && mood) { ctx.globalAlpha = s.strength * (.82 + Math.sin(time / 14) * .17); ctx.drawImage(background, 0, 0); ctx.globalAlpha = s.strength;
     for (const p of motes) {
       const alpha = .72 * Math.min(1, p.age / 3, (p.duration - p.age) / 4);

@@ -73,7 +73,7 @@ function showSettings() {
 }
 function applyWindows() {
   for (const [id, win] of overlays) {
-    if(!settings.dragClouds || settings.paused || (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)!=='clouds') win.setIgnoreMouseEvents(true,{forward:true});
+    if(!settings.dragClouds || settings.paused || (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)!=='clouds') { win.setIgnoreMouseEvents(true,{forward:true}); win.setFocusable(false); }
     win.setContentProtection(settings.hideInScreenshots);
     win.setAlwaysOnTop(true, 'screen-saver');
     const display = screen.getAllDisplays().find(d => d.id === id);
@@ -159,7 +159,11 @@ else {
       authorized(e);
       const win=[...overlays.values()].find(w=>w.webContents===e.sender);
       const allowed=settings.dragClouds&&!settings.paused&&(settings.enabled?core.currentEffect(weather.state.current):settings.mode)==='clouds';
-      win?.setIgnoreMouseEvents(!(allowed&&value===true),{forward:true});
+      if (win) {
+        const interactive = allowed && value === true;
+        win.setFocusable(interactive);
+        win.setIgnoreMouseEvents(!interactive, {forward:true});
+      }
     });
     ipcMain.handle('cloud-level',(e,variant,level)=>{
       authorized(e);

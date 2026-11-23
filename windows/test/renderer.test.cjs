@@ -12,7 +12,7 @@ function renderer() {
     if (String(prop).startsWith('create')) return () => ({ addColorStop() {} });
     return (...args) => { for (const value of args) if (typeof value === 'number') assert.ok(Number.isFinite(value), `Non-finite ${String(prop)} coordinate`); };
   }, set(target, prop, value) { target[prop] = value; return true; } });
-  const canvas = () => ({ getContext: () => drawing, setPointerCapture() {} });
+  const canvas = () => ({ getContext: () => drawing, style: {} });
   const initial = { settings: C.normalize(), weather: { current: null } };
   const context = { document: { getElementById: canvas, createElement: canvas }, innerWidth: 1920, innerHeight: 1080,
     Soundscape: class { sync() {} strike() {} }, Image: class { complete = true; naturalWidth = 1536; naturalHeight = 1024; },
@@ -207,17 +207,27 @@ test('Cloud drag preserves grab offset, saves height, restores click-through and
  const r=renderer();
  r.run('renderState({settings:window.Sugrob.normalize({mode:"clouds",dragClouds:true}),weather:{current:null}})');
  const p=JSON.parse(r.run('JSON.stringify(falling[2])'));
- r.handlers.pointerdown({button:0,clientX:p.x+5,clientY:p.y+5,pointerId:1,preventDefault(){}});
+ r.handlers.mousedown({button:0,clientX:p.x+5,clientY:p.y+5,pointerId:1,preventDefault(){}});
  assert.equal(r.run('cloudDrag.cloud===falling[2]'),true);
- r.handlers.pointermove({clientX:800,clientY:545});
+ r.handlers.mousemove({clientX:800,clientY:545});
  assert.equal(r.run('falling[2].y'),540);
  r.run('tick(.04)');assert.equal(r.run('falling[2].x'),795);
- r.handlers.pointerup();
+ r.handlers.mouseup();
  assert.deepEqual(r.saved,[[p.variant,.5]]);
  r.run('state.settings.cloudLevels[2]=.5;cloudIndex=2;spawn(state.settings)');
  assert.equal(r.run('falling.at(-1).y'),540);
- r.handlers.pointermove({clientX:1900,clientY:1000});
+ r.handlers.mousemove({clientX:1900,clientY:1000});
  assert.equal(r.input.at(-1),false);
  r.run('state.settings.dragClouds=false');
  assert.equal(r.run('cloudAt(falling[2].x,falling[2].y)'),null);
+});
+
+test('Cloud drag releases when mouse-up occurs outside the overlay',()=>{
+ const r=renderer();r.run('renderState({settings:window.Sugrob.normalize({mode:"clouds",dragClouds:true}),weather:{current:null}})');
+ const p=JSON.parse(r.run('JSON.stringify(falling[2])'));
+ r.handlers.mousedown({button:0,clientX:p.x,clientY:p.y,preventDefault(){}});
+ r.handlers.mousemove({clientX:800,clientY:500,buttons:1});
+ r.handlers.mousemove({clientX:900,clientY:600,buttons:0});
+ assert.equal(r.run('cloudDrag'),null);assert.equal(r.saved.length,1);
+ r.handlers.blur();assert.equal(r.input.at(-1),false);
 });
