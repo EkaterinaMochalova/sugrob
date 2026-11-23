@@ -6,6 +6,7 @@ const { spawn } = require('node:child_process');
 const { createInterface } = require('node:readline');
 const { pathToFileURL } = require('node:url');
 const core = require('./core.js');
+const overlayPolicy = require('./overlay-policy.cjs');
 const { cameras } = require('./live-camera.cjs');
 const { InlineCamera } = require('./inline-camera.cjs');
 let inlineCamera, library;
@@ -75,15 +76,12 @@ function showSettings() {
 }
 function applyWindows() {
   for (const [id, win] of overlays) {
-    if(!settings.dragClouds || settings.paused || (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)!=='clouds') { win.setIgnoreMouseEvents(true,{forward:true}); win.setFocusable(false); }
-    win.setContentProtection(settings.hideInScreenshots);
-    win.setAlwaysOnTop(true, 'screen-saver');
+    overlayPolicy.configure(win, {hideCapture: settings.hideInScreenshots, canDrag: settings.dragClouds && !settings.paused && (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)==='clouds'});
     const display = screen.getAllDisplays().find(d => d.id === id);
     const front = windows.find(w => w.id === foreground);
     const b = display?.bounds;
     const full = b && front && front.x <= b.x + 2 && front.y <= b.y + 2 && front.x + front.width >= b.x + b.width - 2 && front.y + front.height >= b.y + b.height - 2;
-    if (!settings.overFullScreen && full) win.hide();
-    else if (!win.isVisible()) win.showInactive();
+    overlayPolicy.visibility(win, settings.overFullScreen || !full);
   }
 }
 function rebuild() {
@@ -165,8 +163,7 @@ else {
       const allowed=settings.dragClouds&&!settings.paused&&(settings.enabled?core.currentEffect(weather.state.current):settings.mode)==='clouds';
       if (win) {
         const interactive = allowed && value === true;
-        win.setFocusable(interactive);
-        win.setIgnoreMouseEvents(!interactive, {forward:true});
+        overlayPolicy.input(win, interactive);
       }
     });
     ipcMain.handle('cloud-level',(e,variant,level)=>{
