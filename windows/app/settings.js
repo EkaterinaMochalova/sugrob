@@ -1,5 +1,6 @@
 'use strict';
 const api = window.sugrob, C = window.Sugrob, $ = id => document.getElementById(id);
+let compact = false;
 let state, searchToken = 0, cameras = [];
 let selectedCamera = null, expanded = false, draftCamera = null, replacingCamera = null;
 const cameraChoices = new Map();
@@ -21,7 +22,7 @@ for (const [key, value] of Object.entries(C.defaults)) {
 function clock() {
   if (!state?.settings.city) { $('city-clock').textContent = ''; return; }
   const m = C.mood(state.settings.city);
-  $('hero-clock').textContent = `${m.time} · ${state.settings.city.country || ''} · ${seasonNames[m.season]}`;
+  $('hero-clock').textContent = compact ? m.time : `${m.time} · ${state.settings.city.country || ''} · ${seasonNames[m.season]}`;
   $('city-clock').textContent = `${m.time} · ${seasonNames[m.season]} · ${lightNames[m.light]}`;
 }
 function render(next) {
@@ -35,6 +36,15 @@ function render(next) {
   }
   $('city-name').textContent = s.city ? [s.city.name, s.city.admin1, s.city.country].filter(Boolean).join(', ') : 'Выбери город или оставь ручной эффект';
   const portrait = s.city && C.portrait(s.city);
+  $('compact-window').disabled=!s.city;
+  $('compact-city').replaceChildren();
+  const compactCities=[...C.cities,...(next.places||[]).map(p=>p.city)];
+  if(s.city&&!compactCities.some(c=>c.id===s.city.id))compactCities.push(s.city);
+  for(const city of compactCities.filter((c,i,a)=>a.findIndex(other=>other.id===c.id)===i)){
+    const option=document.createElement('option');option.value=String(city.id);option.textContent=city.name;$('compact-city').append(option);
+  }
+  $('compact-city').value=String(s.city?.id);
+  $('compact-weather').textContent=!s.enabled?'Своя погода':next.weather.current?`${Math.round(next.weather.current.temperature_2m)}° · ${C.currentDescription(next.weather.current)}`:next.weather.loading?'Узнаём погоду…':'Погода недоступна';
   $('hero-city').textContent = s.city?.name || 'Побудем где-нибудь ещё.';
   const options = cameras.filter(c => (c.id === portrait?.portrait || c.id === 'custom:'+s.city?.id) && c.embed);
   const camera = (draftCamera?.id==='custom:'+s.city?.id ? draftCamera : null) || options.find(c => c.embed === cameraChoices.get(String(s.city?.id))) || options[0];
@@ -117,7 +127,7 @@ api.subscribe(render); api.state().then(render).catch(error); setInterval(clock,
 
 api.cameras().then(value => { cameras = value; if (state) render(state); }).catch(error);
 let advanced = false;
-function showAdvanced(value) { advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('custom-camera').hidden=advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; $('live-card').hidden = advanced || !state?.settings.city; setExpanded(false); syncCamera(); }
+function showAdvanced(value) { if(value&&compact)void setCompact(false); advanced = value; for (const section of document.querySelectorAll('.advanced')) section.hidden = !advanced; $('city-section').hidden = advanced; $('custom-camera').hidden=advanced; $('settings-tab').textContent = advanced ? '← Вернуться к городу' : 'Эффекты и настройки'; $('live-card').hidden = advanced || !state?.settings.city; setExpanded(false); syncCamera(); }
 $('settings-tab').onclick = () => showAdvanced(!advanced);
 
 $('source-city').onclick = () => api.update({enabled:true}).catch(error);
@@ -148,12 +158,12 @@ function setExpanded(value) {
 $('collapse-video').onclick = () => { setExpanded(false); cameraCollapsed = !cameraCollapsed; localStorage.setItem('cameraCollapsed',String(cameraCollapsed)); render(state); };
 $('expand-camera').onclick = () => setExpanded(!expanded);
 $('reload-camera').onclick = () => api.cameraReload().catch(error);
-document.addEventListener('keydown',e => { if(e.key === 'Escape') setExpanded(false); });
+document.addEventListener('keydown',e => { if(e.key === 'Escape') { if(compact)void setCompact(false);setExpanded(false); } });
 document.addEventListener('visibilitychange',syncCamera);
 window.addEventListener('resize',syncCamera);
 new ResizeObserver(syncCamera).observe($('camera-viewport'));
 api.onCameraStatus(value => { $('camera-note').textContent = value; });
-api.onCameraCollapse(() => setExpanded(false));
+api.onCameraCollapse(() => {if(compact)void setCompact(false);setExpanded(false);});
 api.onCameraLayout(syncCamera);
 
 function renderLibrary(){
@@ -189,3 +199,21 @@ $('custom-save').onclick=async()=>{
 $('custom-cancel').onclick=async()=>{draftCamera=null;await api.library('clear-preview',{city:state.settings.city});render(await api.state());};
 $('custom-delete').onclick=async()=>{try{await api.library('remove-city',{city:state.settings.city});draftCamera=null;replacingCamera=null;render(await api.state());}catch(e){$('custom-message').textContent=e.message;}};
 $('custom-link').oninput=()=>{draftCamera=null;if(state)render(state);};
+
+async function setCompact(value){
+ if(value&&!state?.settings.city)return;
+ if(value){showAdvanced(false);setExpanded(false);cameraCollapsed=false;localStorage.setItem('cameraCollapsed','false');}
+ compact=value;document.body.classList.toggle('camera-compact',value);
+ $('compact-window').textContent=value?'Полный вид ↗':'Окно';
+ $('compact-window').setAttribute('aria-pressed',String(value));
+ render(state);
+ try{if(api.compactWindow)await api.compactWindow(value);}catch(e){error(e);}
+ syncCamera();
+}
+$('compact-window').onclick=()=>setCompact(!compact);
+$('compact-settings').onclick=async()=>{await setCompact(false);showAdvanced(true);};
+$('compact-city').onchange=()=>{
+ const cities=[...C.cities,...(state.places||[]).map(p=>p.city)];
+ const city=cities.find(c=>String(c.id)===$('compact-city').value);
+ if(city)api.select(city,true).catch(error);
+};

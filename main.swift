@@ -767,6 +767,7 @@ final class CloudOverlayView: SKView {
 
 @MainActor
 final class Overlay {
+    private var previousEffect: Mode?
     private var captureTimer: Timer?
     private var captureBusy = false
     private var captureGeneration = 0
@@ -861,7 +862,12 @@ final class Overlay {
         scene.intensity = d.double(forKey: "intensity")
         scene.speedFactor = max(d.double(forKey: "speed"), 0.1)
         scene.sizeFactor = d.double(forKey: "size")
-        scene.field.alpha = d.double(forKey: "opacity")
+        let opacity = CGFloat(d.double(forKey: "opacity"))
+        if previousEffect != effect && effect != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            scene.field.alpha = 0
+            scene.field.run(.fadeAlpha(to: opacity, duration: 0.9), withKey: "weatherArrival")
+        } else if scene.field.action(forKey: "weatherArrival") == nil { scene.field.alpha = opacity }
+        previousEffect = effect
         scene.onWindows = d.bool(forKey: "onWindows")
         scene.onGround = d.bool(forKey: "onGround")
         scene.cursor = d.bool(forKey: "cursor")
@@ -1016,6 +1022,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     var pauseItem: NSMenuItem!
     var settingsWindow: NSWindow?
+    private var fullWindowFrame: NSRect?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let d = UserDefaults.standard
@@ -1122,9 +1129,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlays.forEach { $0.scene.clearAll() }
     }
 
+    private func setCompactWindow(_ compact: Bool) {
+        guard let window = settingsWindow else { return }
+        if compact {
+            fullWindowFrame = window.frame
+            window.minSize = NSSize(width: 360, height: 320)
+            var frame = window.frame
+            frame.origin.y += frame.height - 460; frame.size = NSSize(width: 540, height: 460)
+            window.setFrame(frame, display: true, animate: !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        } else {
+            window.minSize = NSSize(width: 850, height: 680)
+            if let frame = fullWindowFrame { window.setFrame(frame, display: true, animate: !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
+            fullWindowFrame = nil
+        }
+    }
     @objc func showSettings() {
         if settingsWindow == nil {
-            let w = NSWindow(contentViewController: NSHostingController(rootView: DashboardView(weather: weather)))
+            let w = NSWindow(contentViewController: NSHostingController(rootView: DashboardView(weather: weather, onCompactChange: { [weak self] in self?.setCompactWindow($0) })))
             w.title = "Сугроб"
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             w.setContentSize(NSSize(width: 1040, height: 820))

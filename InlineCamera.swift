@@ -37,6 +37,7 @@ final class InlineCameraSession: NSObject, ObservableObject, WKNavigationDelegat
         generation += 1; lastTime = -1; loadedKey = camera?.key
         status = "Подключаем камеру…"
         web.stopLoading()
+        web.alphaValue = 0
         var request = URLRequest(url: url)
         request.setValue("https://local.sugrob", forHTTPHeaderField: "Referer")
         web.load(request)
@@ -71,8 +72,15 @@ final class InlineCameraSession: NSObject, ObservableObject, WKNavigationDelegat
         web?.stopLoading(); web?.loadHTMLString("", baseURL: nil); web?.navigationDelegate = nil
         web = nil; camera = nil; loadedKey = nil
     }
+    private func reveal(_ web: WKWebView) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.55
+            web.animator().alphaValue = 1
+        }
+    }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { reveal(webView) }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        if (error as NSError).code != NSURLErrorCancelled { status = "Не удалось подключиться · попробуйте обновить" }
+        if (error as NSError).code != NSURLErrorCancelled { reveal(webView); status = "Не удалось подключиться · попробуйте обновить" }
     }
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { status = "Плеер остановился · нажмите «Обновить»" }
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

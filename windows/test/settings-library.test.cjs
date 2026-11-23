@@ -25,6 +25,8 @@ test('Settings preview, save and delete flow keeps draft out of saved list and d
   elements['custom-title'].value='Набережная';
   await elements['custom-preview'].onclick();assert.equal(lib.places.length,0);assert.equal(elements['camera-title'].textContent,'Набережная');
   await elements['custom-save'].onclick();assert.equal(lib.places.length,1);assert.equal(elements['saved-presets'].children.length,1);assert.equal(elements['camera-title'].textContent,'Набережная');
+  await elements['compact-window'].onclick();assert.equal(vm.runInContext('compact',ctx),true);assert.equal(elements['compact-window'].textContent,'Полный вид ↗');
+  await elements['compact-settings'].onclick();assert.equal(vm.runInContext('compact',ctx),false);assert.equal(vm.runInContext('advanced',ctx),true);
   await elements['custom-delete'].onclick();assert.equal(lib.places.length,0);assert.equal(elements['saved-presets'].children.length,0);
  }finally{fs.rmSync(dir,{recursive:true});}
 });

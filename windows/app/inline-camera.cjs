@@ -24,7 +24,12 @@ class InlineCamera {
       web.on('before-input-event',(event,input) => {
         if(input.type === 'keyDown' && input.key === 'Escape') { event.preventDefault(); this.send('camera-collapse'); }
       });
-      web.on('did-fail-load',(_event,code) => {if(code !== -3) this.status('Не удалось подключиться · попробуйте обновить');});
+      web.on('dom-ready',()=>{
+        if(generation!==this.generation||web.isDestroyed())return;
+        // The player remains the provider's intact embed; only its entrance fades.
+        web.insertCSS?.('@media(prefers-reduced-motion:no-preference){html{animation:sugrob-enter .55s ease-out both}@keyframes sugrob-enter{from{opacity:0}to{opacity:1}}}').catch(()=>{});
+      });
+      web.on('did-fail-load' ,(_event,code) => {if(code !== -3) this.status('Не удалось подключиться · попробуйте обновить');});
       web.on('render-process-gone',() => this.status('Плеер остановился · нажмите «Обновить»'));
       this.status('Подключаем камеру…');
       web.loadURL(key,{httpReferrer:'https://local.sugrob.windows'}).catch(()=>{});

@@ -32,7 +32,9 @@ function renderState(next) {
   if(!s.dragClouds || s.paused) finishCloudDrag();
   mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
   const key = String(mode);
-  if (key !== modeKey) { finishCloudDrag(); stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
+  if (key !== modeKey) {
+    if(mode&&!(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches))canvas.animate?.([{opacity:0},{opacity:1}],{duration:900,easing:'ease-out'});
+    finishCloudDrag(); stormWait = 8; bolt = null; beads = []; falling = []; resting = []; spawnDebt = 0; modeKey = key; if (mode === 'clouds') for(let i=0;i<5;i++){spawn(s);falling[falling.length-1].x=w*(.04+i*.23);} }
   updateMood();
   clearRefraction();glass.configure((mode==='rain'||mode==='storm')&&s.rainGlass!==false,w,h,s.opacity);
   sunlight.configure(mode === 'sunny',s);

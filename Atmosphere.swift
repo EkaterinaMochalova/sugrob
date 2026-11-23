@@ -210,6 +210,16 @@ enum PresenceAssets {
 
 @MainActor final class AtmosphereSound {
     private var player: AVAudioPlayer?
+    private var retiring: AVAudioPlayer?
+    private func retire(_ old: AVAudioPlayer?, duration: TimeInterval) {
+        guard let old else { return }
+        retiring?.stop(); retiring = old
+        old.setVolume(0, fadeDuration: duration)
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            old.stop()
+            if self?.retiring === old { self?.retiring = nil }
+        }
+    }
     private var track: String?
     private var thunderPlayer: AVAudioPlayer?
     private var thunderJob: DispatchWorkItem?
@@ -242,21 +252,19 @@ enum PresenceAssets {
         let selected = weatherSound ? (effect == .storm ? "weather-rain" : effect?.soundAsset) : (mood?.portrait == .florence && florenceBells ? "florence-bells" : mood?.soundAsset)
         guard enabled, let selected, let url = PresenceAssets.url(selected, extension: "mp3") else {
             let old = player; player = nil; track = nil
-            old?.setVolume(0, fadeDuration: 0.5)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { old?.stop() }
+            retire(old, duration: 0.5)
             return
         }
         if track != selected {
             let old = player
-            old?.setVolume(0, fadeDuration: 0.8)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { old?.stop() }
+            retire(old, duration: 1.6)
             player = try? AVAudioPlayer(contentsOf: url)
             track = selected
             player?.numberOfLoops = -1
             player?.volume = 0
             player?.play()
         }
-        player?.setVolume(Float(min(1, max(0, volume))) * 0.5, fadeDuration: 0.8)
+        player?.setVolume(Float(min(1, max(0, volume))) * 0.5, fadeDuration: 1.6)
     }
 }
 

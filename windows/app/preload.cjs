@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('sugrob', {
   library: (action,value) => ipcRenderer.invoke('library',action,value),
+  compactWindow: value => ipcRenderer.invoke('compact-window',value),
   cameras: () => ipcRenderer.invoke('cameras'),
   cameraLayout: (key,bounds) => ipcRenderer.invoke('camera-layout',key,bounds),
   cameraReload: () => ipcRenderer.invoke('camera-reload'),

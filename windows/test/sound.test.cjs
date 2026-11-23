@@ -6,10 +6,12 @@ test('Audio is silent by default, fades, reuses the loop, and stops when disable
  vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../app/sound.js'),'utf8'),context);
  const sound=new context.window.Soundscape();sound.sync(false,'tokyo-street',.25);assert.equal(created.length,0);
  sound.sync(true,'rome-pantheon',.4);assert.equal(created.length,1);assert.equal(created[0].volume,0);assert.equal(created[0].loop,true);
- now=1000;for(const fn of [...timers.values()])fn();assert.equal(created[0].volume,.2);
+ now=800;for(const fn of [...timers.values()])fn();assert.ok(created[0].volume>0&&created[0].volume<.2);
+ now=1600;for(const fn of [...timers.values()])fn();assert.equal(created[0].volume,.2);
  sound.sync(true,'rome-pantheon',.6);assert.equal(created.length,1);
  assert.equal(created[0].src,'assets/rome-pantheon.mp3');
- sound.sync(true,null,.6);now=2000;for(const fn of [...timers.values()])fn();assert.equal(created[0].paused,true);assert.equal(created[0].volume,0);
+ sound.sync(true,null,.6);now=3200;for(const fn of [...timers.values()])fn();assert.equal(created[0].paused,true);assert.equal(created[0].volume,0);
+ for(let i=0;i<12;i++){sound.sync(true,`city-${i}`, .4);assert.ok(created.filter(audio=>!audio.paused).length<=2,"rapid city switches must not pile up audio loops");}
 });
 
 test('Thunder follows strikes with delay, one shot, and cancels on pause or source change',()=>{

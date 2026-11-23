@@ -7,6 +7,8 @@ const { createInterface } = require('node:readline');
 const { pathToFileURL } = require('node:url');
 const core = require('./core.js');
 const overlayPolicy = require('./overlay-policy.cjs');
+const {CompactWindow}=require('./compact-window.cjs');
+const compactWindow=new CompactWindow();
 const {RefractionCapture}=require('./refraction.cjs');
 const refraction=new RefractionCapture(desktopCapturer);
 let refractionReadyAt=0;
@@ -151,6 +153,7 @@ else {
     try { settings = core.normalize(JSON.parse(fs.readFileSync(settingsPath, 'utf8'))); } catch { settings = core.normalize(); }
     session.defaultSession.setPermissionRequestHandler((_web, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
+    ipcMain.handle('compact-window',(e,value)=>{authorized(e,true);compactWindow.set(settingsWindow,value===true);send(settingsWindow,'camera-layout');});
     ipcMain.handle('refraction', async e => {
       authorized(e);
       const entry=[...overlays.entries()].find(([,win])=>win.webContents===e.sender);

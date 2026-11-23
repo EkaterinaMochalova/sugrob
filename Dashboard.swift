@@ -28,6 +28,9 @@ private let destinations: [CityPortrait] = [.florence, .rome, .tokyo, .petersbur
 
 struct DashboardView: View {
     @ObservedObject var weather: WeatherStore
+    var onCompactChange: (Bool) -> Void = { _ in }
+    @State private var compact = false
+    @State private var hovering = false
     @AppStorage("appTheme") private var theme = AppTheme.sage
     private var ink: Color { theme.ink }
     private var paper: Color { theme.paper }
@@ -52,7 +55,7 @@ struct DashboardView: View {
     var body: some View {
         GeometryReader { geometry in
         HStack(spacing: 0) {
-            if !expanded {
+            if !expanded && !compact {
             VStack(alignment: .leading, spacing: 24) {
                 Label("сугроб", systemImage: "snowflake").font(.system(size: 24, weight: .semibold, design: .serif))
                     .padding(.top, 10)
@@ -95,21 +98,25 @@ struct DashboardView: View {
                 SettingsView(weather: weather).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: compact ? 8 : 22) {
+                        if !compact {
                         HStack {
                             Text("ОКНО В ДРУГОЙ ГОРОД").font(.system(size: 10, weight: .semibold)).tracking(2).opacity(0.55)
                             Spacer()
+                            Button("Окно") { enterCompact() }.help("Компактный вид рядом с работой")
+                                .disabled(weather.city == nil)
                             Button { paused.toggle() } label: { Label(paused ? "Продолжить эффекты" : "Пауза эффектов", systemImage: paused ? "play" : "pause") }
                                 .buttonStyle(.borderless).font(.system(size: 11))
                         }
+                        }
                         if let city = weather.city {
-                            cityHeader(city)
-                            cameraCard(city, height: expanded ? max(360, geometry.size.height - 228) : max(180, min(260, geometry.size.height * 0.30)))
+                            if compact { compactHeader(city) } else { cityHeader(city) }
+                            cameraCard(city, height: compact ? max(150, geometry.size.height - 160) : expanded ? max(360, geometry.size.height - 228) : max(180, min(260, geometry.size.height * 0.30)))
                         } else {
                             Text("Побудем\nгде-нибудь ещё.").font(.system(size: 42, weight: .regular, design: .serif))
                             Text("Выбери город слева — его погода, звуки и вид из окна будут рядом.").font(.system(size: 15)).foregroundStyle(.secondary)
                         }
-                        if !expanded {
+                        if !expanded && !compact {
                         weatherSource
                         if let city = weather.city {
                             if weather.enabled { weatherCard(city) }
@@ -132,15 +139,49 @@ struct DashboardView: View {
                         }.font(.system(size: 12))
                         Link("Погода: Open-Meteo · Города: GeoNames", destination: URL(string: "https://open-meteo.com/")!).font(.system(size: 10)).opacity(0.6)
                         }
-                    }.padding(24)
+                    }.padding(compact ? 12 : 24)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .foregroundStyle(ink).tint(ink).background(paper).preferredColorScheme(.light)
         }
-        .frame(minWidth: 850, idealWidth: 1040, minHeight: 680, idealHeight: 820)
-        .onExitCommand { expanded = false }
+        .frame(minWidth: compact ? 360 : 850, idealWidth: compact ? 520 : 1040, minHeight: compact ? 300 : 680, idealHeight: compact ? 430 : 820)
+        .onHover { hovering = $0 }
+        .onChange(of: compact) { value in DispatchQueue.main.async { onCompactChange(value) } }
+        .onExitCommand { if compact { compact = false }; expanded = false }
         .sheet(isPresented: $editingCity) { CityEditor(weather: weather, library: library, city: editorCity) }
+    }
+    private func enterCompact() { settings = false; expanded = false; cameraCollapsed = false; compact = true }
+    private func compactHeader(_ city: WeatherCity) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Menu {
+                    ForEach(destinations, id: \.rawValue) { portrait in
+                        Button(portrait.city.name) { weather.select(portrait.city, enableWeather: weather.enabled) }
+                    }
+                    ForEach(library.places.filter { CityPortrait.matching($0.city) == .neutral }) { place in
+                        Button(place.city.name) { weather.select(place.city, enableWeather: weather.enabled) }
+                    }
+                } label: { Text(city.name).font(.system(size: 21, design: .serif)).lineLimit(1).minimumScaleFactor(0.65) }
+                .menuStyle(.borderlessButton)
+                Spacer()
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    Text(CityMood.localTime(context.date, city: city)).monospacedDigit()
+                }
+                Button { compact = false } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                    .help("Вернуться к полному виду · Esc").accessibilityLabel("Вернуться к полному виду")
+            }
+            HStack {
+                if let current = weather.current, weather.enabled {
+                    Text("\(Int(current.temperature_2m.rounded()))° · \(current.description)")
+                } else { Text(weather.enabled ? (weather.loading ? "Узнаём погоду…" : "Погода недоступна") : "Своя погода · \(manualMode.title)") }
+                Spacer()
+                Button { paused.toggle() } label: { Image(systemName: paused ? "play" : "pause") }
+                    .help(paused ? "Продолжить эффекты" : "Пауза эффектов")
+                Button { compact = false; settings = true } label: { Image(systemName: "slider.horizontal.3") }
+                    .help("Эффекты и настройки").accessibilityLabel("Эффекты и настройки")
+            }.font(.caption).foregroundStyle(.secondary)
+        }
     }
     private var weatherSource: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -185,6 +226,7 @@ struct DashboardView: View {
                         }.labelsHidden()
                     } else { Text(camera.title).font(.system(size: 14)) }
                     Spacer()
+                    if !compact {
                     Button(cameraCollapsed ? "Показать видео" : "Свернуть видео") {
                         expanded = false
                         cameraCollapsed.toggle()
@@ -192,27 +234,31 @@ struct DashboardView: View {
                     Button { cameraCollapsed = false; expanded.toggle() } label: {
                         Image(systemName: expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                     }.help(expanded ? "Вернуться · Esc" : "Развернуть вид")
+                    }
                 }
                 if !cameraCollapsed {
-                InlineCameraView(camera: camera, session: cameraSession, expanded: expanded, collapse: { expanded = false })
+                InlineCameraView(camera: camera, session: cameraSession, expanded: expanded || compact, collapse: { expanded = false; compact = false })
                     .frame(height: height).clipShape(RoundedRectangle(cornerRadius: 14))
                 HStack {
                     Text(cameraSession.status).font(.system(size: 11)).foregroundStyle(.secondary)
                     Spacer()
                     Link(camera.provider, destination: camera.source).font(.system(size: 10))
                     Button("Обновить") { cameraSession.reload() }.font(.system(size: 11)).buttonStyle(.borderless)
+                        .opacity(!compact || hovering ? 1 : 0.35)
                 }
                 }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     Image(systemName: "window.ceiling").font(.system(size: 30, weight: .light))
                     Text("Здесь пока нет live-камеры").font(.system(size: 24, design: .serif))
-                    Text("Погода города доступна ниже.").font(.caption)
-                }.frame(maxWidth: .infinity, minHeight: 230, alignment: .center)
+                    Text(compact ? "Выбери другой город в меню сверху." : "Погода города доступна ниже.").font(.caption)
+                }.frame(maxWidth: .infinity, minHeight: compact ? 120 : 230, alignment: .center)
             }
+            if !compact {
             Button("Мои камеры · добавить / изменить") { editorCity = CityPortrait.matching(city) == .neutral ? city : CityPortrait.matching(city).city; editingCity = true }
                 .font(.caption).buttonStyle(.borderless)
-        }.padding(14).background(Color.white.opacity(0.7)).cornerRadius(18)
+            }
+        }.padding(compact ? 8 : 14).background(Color.white.opacity(0.7)).cornerRadius(18)
     }
     private func weatherCard(_ city: WeatherCity) -> some View {
         VStack(alignment: .leading, spacing: 12) {
