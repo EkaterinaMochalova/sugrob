@@ -15,9 +15,11 @@ const glass = new window.RainGlass();
 const fogMotion = new window.FogMotion();
 const photos = Object.fromEntries(['autumn','olive','pine','maple','cherry','gull'].map(name => { const image = new Image(); image.src = `assets/${name}.png`; return [name, image]; }));
 let events = [], eventWait = 1;
+let frameDirty = true, nextRender = 0;
 let lastFrame = 0, spawnDebt = 0, moteWait = 2, time = 0, lastClock = 0;
 function resize() {
-  w = innerWidth; h = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
+  frameDirty=true;
+  w = innerWidth; h = innerHeight; dpr = Math.min(devicePixelRatio || 1, 1.5);
   canvas.width = Math.ceil(w * dpr); canvas.height = Math.ceil(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   background.width = w; background.height = h; moodKey = ''; resting = []; updateMood();
   if(state){clearRefraction();glass.configure((mode==='rain'||mode==='storm')&&state.settings.rainGlass!==false,w,h,state.settings.opacity);}
@@ -30,6 +32,7 @@ function updateMood() {
   if (key !== moodKey) { moodKey = key; mood = next; motes = []; events = []; eventWait = 1; bg.clearRect(0, 0, w, h); if (mood) art.backdrop(bg, w, h, mood); }
 }
 function renderState(next) {
+  frameDirty=true;
   state = next; const s = state.settings;
   if(!s.dragClouds || s.paused) finishCloudDrag();
   if(s.paused)fogMotion.previous=null;
@@ -68,7 +71,7 @@ function moveCloudMouse(e){
 addEventListener('mousemove',moveCloudMouse);
 addEventListener('mouseup',()=>{finishCloudDrag();cloudHitMode();});
 addEventListener('blur',()=>{finishCloudDrag();cursor={x:-1000,y:-1000};cloudHitMode();});
-api.onResetClouds(()=>{cloudDrag=null;for(const p of falling)if(p.kind==='clouds')p.y=Math.min(150,h*(.08+Math.random()*.08));cloudHitMode();});
+api.onResetClouds(()=>{frameDirty=true;cloudDrag=null;for(const p of falling)if(p.kind==='clouds')p.y=Math.min(150,h*(.08+Math.random()*.08));cloudHitMode();});
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {
   cloudModifier=data.cloudModifier===true;if(!cloudModifier)finishCloudDrag();
@@ -86,7 +89,7 @@ api.onEnvironment(data => {
 });
 api.onPreview(() => { if (state?.settings.enabled && !state.settings.paused && mood) { events = []; eventWait = 35; showEvent(); } });
 api.onRainGlassPreview(()=>{if(!state?.settings.paused)glass.preview();});
-api.onClear(() => { glass.clear(); beads = []; for (const p of resting) release(p); resting = []; motes = []; });
+api.onClear(() => { frameDirty=true; glass.clear(); beads = []; for (const p of resting) release(p); resting = []; motes = []; });
 api.subscribe(renderState); api.state().then(renderState);
 function spawn(s) {
   if (mode === 'clouds') { const variant=cloudIndex++%3,level=s.cloudLevels?.[variant]; falling.push({kind:'clouds',x:-500,y:Number.isFinite(level)&&level>=0&&level<=1?h*level:Math.min(150,h*(.08+Math.random()*.08)),vx:4+Math.random()*3,size:(90+Math.random()*50)*Math.min(s.size,1.2),variant,stretch:.85+Math.random()*.25,rotation:0,alpha:.22+Math.random()*.14,tint:'#eeeeee'}); return; }
@@ -270,6 +273,12 @@ function draw() {
 function frame(now) {
   requestAnimationFrame(frame);
   if (!state) { lastFrame = now; return; }
+  if(state.settings.paused && !frameDirty){lastFrame=now;nextRender=0;return;}
+  const interval=cloudDrag ? 1000/60 : 1000/30;
+  if(!frameDirty && now<nextRender-.5)return;
+  const overdue=now-nextRender;
+  nextRender=now+interval-(nextRender>0 && overdue>=0 && overdue<interval ? overdue : 0);
+  frameDirty=false;
   const dt = lastFrame ? Math.min(.05, Math.max(0, (now - lastFrame) / 1000)) : 0; lastFrame = now;
   if (!state.settings.paused) tick(dt);
   cloudHitMode();

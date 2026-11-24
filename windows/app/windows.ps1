@@ -42,11 +42,17 @@ public static class SugrobDesktop {
 }
 '@
 $tick = 0
-$windows = @()
+$previousCtrl = $false
 while ($true) {
-    if ($tick % 10 -eq 0) { $windows = @([SugrobDesktop]::Read(__SUGROB_PID__)) }
-    $tick++
-    $snapshot = @{ windows = $windows; ctrl = [SugrobDesktop]::ControlHeld(); foreground = [SugrobDesktop]::GetForegroundWindow().ToInt64().ToString() }
-    ConvertTo-Json -InputObject $snapshot -Compress -Depth 4
+    $ctrl = [SugrobDesktop]::ControlHeld()
+    if ($tick % 10 -eq 0) {
+        $snapshot = @{ windows = @([SugrobDesktop]::Read(__SUGROB_PID__)); ctrl = $ctrl; foreground = [SugrobDesktop]::GetForegroundWindow().ToInt64().ToString() }
+        ConvertTo-Json -InputObject $snapshot -Compress -Depth 4
+    } elseif ($ctrl -ne $previousCtrl -or ($ctrl -and $tick % 2 -eq 0)) {
+        if ($ctrl) { [Console]::WriteLine('{"ctrl":true}') }
+        else { [Console]::WriteLine('{"ctrl":false}') }
+    }
+    $previousCtrl = $ctrl
+    $tick = ($tick + 1) % 10
     Start-Sleep -Milliseconds 50
 }

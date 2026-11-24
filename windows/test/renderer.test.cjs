@@ -6,8 +6,10 @@ const path = require('node:path');
 const C = require('../app/core.js');
 function renderer() {
   let environment, clear, preview, lightningPreview;
+  let clears=0;
   const handlers = {}, saved = [], input = [], timers = [];
   const drawing = new Proxy({}, { get(target, prop) {
+    if (prop === 'clearRect') return ()=>{clears++;};
     if (prop in target) return target[prop];
     if (String(prop).startsWith('create')) return () => ({ addColorStop() {} });
     return (...args) => { for (const value of args) if (typeof value === 'number') assert.ok(Number.isFinite(value), `Non-finite ${String(prop)} coordinate`); };
@@ -20,7 +22,7 @@ function renderer() {
     sugrob: { onRainGlassPreview() {}, cloudInteractive(v) { input.push(v); }, saveCloudLevel:async(v,y)=>{saved.push([v,y]);}, onResetClouds() {}, onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
   for (const file of ['core.js', 'art.js', 'sunlight.js', 'rain-glass.js', 'fog-motion.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
-  return { timers, handlers, saved, input, run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
+  return { clears:()=>clears, timers, handlers, saved, input, run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
 }
 test('Canvas renderer handles all portraits and weather modes with bounded particle counts', () => {
   const r = renderer();
@@ -100,9 +102,10 @@ test('Rain stays aligned and switching source preserves the same rain particles'
  r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'snow'}),weather:{current:null}})})`);
  assert.equal(r.run('falling.length'),0);
 });
-test('Animation advances on every display frame, including 120 Hz', () => {
+test('Animation uses elapsed time while skipping excess 120 Hz frames', () => {
  const r=renderer();r.run(`renderState(${JSON.stringify({settings:C.normalize(),weather:{current:null}})})`);r.run('frame(1000)');const before=r.run('time');
- r.run('frame(1000+1000/120)');assert.ok(r.run('time')>before);
+ r.run('frame(1000+1000/120)');assert.equal(r.run('time'),before);
+ r.run('frame(1000+1000/30)');assert.ok(Math.abs(r.run('time')-before-1/30)<.001);
 });
 
 test('Foreground snow crosses window edges while background snow collects', () => {
@@ -309,4 +312,15 @@ test('Clouds ignore clicks without Ctrl and release immediately when Ctrl is rel
  r.handlers.mousemove({ctrlKey:true,clientX:p.x+40,clientY:p.y+40,buttons:1});
  r.environment({cursor:{x:p.x+40,y:p.y+40},windows:[],ground:1080,cloudModifier:false});
  assert.equal(r.run('cloudDrag'),null);assert.equal(r.input.at(-1),false);assert.equal(r.saved.length,1);
+});
+
+test('High refresh displays cap render work; paused scenes redraw only when changed',()=>{
+ const r=renderer();r.run('renderState({settings:window.Sugrob.normalize({mode:"clouds"}),weather:{current:null}})');
+ const before=r.clears();r.run('for(let i=0;i<144;i++)frame(1000+i*1000/144)');
+ assert.ok(r.clears()-before<=31);assert.ok(r.clears()-before>=24);
+ r.run('renderState({...state,settings:{...state.settings,paused:true}});frame(2100)');
+ const paused=r.clears();r.run('for(let i=0;i<144;i++)frame(2200+i*1000/144)');assert.equal(r.clears(),paused);
+ r.clear();r.run('frame(3300)');assert.equal(r.clears(),paused+1);
+ r.run('renderState({...state,settings:{...state.settings,mode:"rain",paused:false}})');
+ const rain=r.clears();r.run('for(let i=0;i<144;i++)frame(4000+i*1000/144)');assert.ok(r.clears()-rain<=31);assert.ok(r.clears()-rain>=28);
 });

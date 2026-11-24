@@ -134,7 +134,9 @@ function startHelper() {
     if(quitting)return;
     try {
       const data = JSON.parse(line);
+      const modifierChanged=cloudModifier!==(data.ctrl===true);
       cloudModifier=data.ctrl===true;modifierAt=Date.now();
+      if(!Array.isArray(data.windows)){if(modifierChanged)applyWindows();return;}
       windows = (Array.isArray(data.windows) ? data.windows : []).map(w => ({ id: w.id, ...screen.screenToDipRect(null, { x: w.x, y: w.y, width: w.width, height: w.height }) }));
       foreground = data.foreground;
       if (windowStatus !== 'Края окон доступны.') { windowStatus = 'Края окон доступны.'; broadcast(); }

@@ -845,7 +845,7 @@ final class Overlay {
         let view = CloudOverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
         view.allowsTransparency = true
         view.ignoresSiblingOrder = true
-        view.preferredFramesPerSecond = min(120, max(60, screen.maximumFramesPerSecond))
+        view.preferredFramesPerSecond = 60
         scene = SnowScene(screen: screen)
         view.presentScene(scene)
         window.contentView = view
