@@ -4,6 +4,7 @@ const C = window.Sugrob, art = window.SugrobArt, api = window.sugrob;
 const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
 const background = document.createElement('canvas'), bg = background.getContext('2d');
 let w = 1, h = 1, dpr = 1, state, mode = 'snow', mood, moodKey = '', modeKey = '', ground = 0;
+let cloudModifier = false;
 let cloudIndex = 0, cloudDrag = null, cloudInput = false;
 let stormWait = 8, bolt = null, previewBolt = null, lastPreview = -100;
 let beads = [];
@@ -47,18 +48,19 @@ function cloudAt(x,y) {
  if(!state?.settings.dragClouds||state.settings.paused||mode!=='clouds')return null;
  return [...falling].reverse().find(p=>{if(p.kind!=='clouds')return false;const aspect=p.variant===1?2:3;return ((x-p.x)/(p.size*aspect*p.stretch*.42))**2+((y-p.y)/(p.size*.34))**2<=1;})||null;
 }
-function cloudHitMode(){const next=!!cloudDrag||!!cloudAt(cursor.x,cursor.y);canvas.style.cursor=cloudDrag?'grabbing':next?'grab':'default';if(next!==cloudInput){cloudInput=next;api.cloudInteractive(next);}}
+function cloudHitMode(){const next=cloudModifier&&(!!cloudDrag||!!cloudAt(cursor.x,cursor.y));canvas.style.cursor=cloudDrag?'grabbing':next?'grab':'default';if(next!==cloudInput){cloudInput=next;api.cloudInteractive(next);}}
 function finishCloudDrag(){if(!cloudDrag)return;const p=cloudDrag.cloud;cloudDrag=null;api.saveCloudLevel(p.variant,C.clamp(p.y/h,0,1)).catch(()=>{});}
 // Mouse events also work when Electron forwards native WM_MOUSEMOVE without pointer events.
 addEventListener('mousedown',e=>{
- if(e.button!==0)return;const p=cloudAt(e.clientX,e.clientY);if(!p)return;
+ if(e.button!==0||!e.ctrlKey)return;cloudModifier=true;const p=cloudAt(e.clientX,e.clientY);if(!p)return;
  cloudDrag={cloud:p,dx:e.clientX-p.x,dy:e.clientY-p.y};
  cursor={x:e.clientX,y:e.clientY};cloudHitMode();e.preventDefault();
 });
 function moveCloudMouse(e){
+ cloudModifier=e.ctrlKey===true;
  cursor={x:e.clientX,y:e.clientY};
  if(cloudDrag){
-  if(e.buttons===0){finishCloudDrag();}
+  if(e.buttons===0||!cloudModifier){finishCloudDrag();}
   else {const p=cloudDrag.cloud;p.x=C.clamp(e.clientX-cloudDrag.dx,10,w-10);p.y=C.clamp(e.clientY-cloudDrag.dy,10,h-10);}
  }
  cloudHitMode();
@@ -69,7 +71,8 @@ addEventListener('blur',()=>{finishCloudDrag();cursor={x:-1000,y:-1000};cloudHit
 api.onResetClouds(()=>{cloudDrag=null;for(const p of falling)if(p.kind==='clouds')p.y=Math.min(150,h*(.08+Math.random()*.08));cloudHitMode();});
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {
-  cursor = data.cursor; ground = data.ground;
+  cloudModifier=data.cloudModifier===true;if(!cloudModifier)finishCloudDrag();
+  cursor = data.cursor;cloudHitMode(); ground = data.ground;
   if(mode==='fog'&&!state?.settings.paused&&!(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches))fogMotion.move(cursor.x,h-cursor.y,Date.now()/1000,w,h);
   else fogMotion.previous=null;
   const previous = new Map(windows.map(win => [win.id, win])); windows = data.windows;

@@ -22,13 +22,15 @@ const { WeatherService } = require('./weather.cjs');
 let settings, settingsWindow, tray, helper, quitting = false, windows = [], foreground = null;
 let windowStatus = 'Определяем края окон…', persistenceError = null, settingsPath;
 const overlays = new Map();
+let cloudModifier = false, modifierAt = 0;
+function controlHeld(){return cloudModifier && Date.now()-modifierAt<250;}
 const weather = new WeatherService(broadcast);
 const smoke = process.argv.includes('--smoke-test');
 if (smoke) app.setPath('userData', path.join(app.getPath('temp'), `sugrob-smoke-${process.pid}`));
 function snapshot() { return { settings, weather: weather.state, windowStatus, persistenceError, places: library?.places || [], cameras: [...cameras,...(library?.cameras||[])] }; }
 function send(win, channel, data) { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, data); }
 function broadcast() {
-  if (!settings) return;
+  if (!settings || quitting) return;
   applyWindows();
   refraction.clear(); refractionReadyAt=Date.now()+500;
   send(settingsWindow, 'state', snapshot());
@@ -84,8 +86,10 @@ function showSettings() {
   settingsWindow.on('close', event => { if (!quitting) { event.preventDefault(); app.quit(); } });
 }
 function applyWindows() {
+  if(quitting || !settings)return;
   for (const [id, win] of overlays) {
-    overlayPolicy.configure(win, {hideCapture: settings.hideInScreenshots || refracting(), canDrag: settings.dragClouds && !settings.paused && (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)==='clouds'});
+    if(win.isDestroyed()){overlays.delete(id);continue;}
+    overlayPolicy.configure(win, {hideCapture: settings.hideInScreenshots || refracting(), canDrag: controlHeld() && settings.dragClouds && !settings.paused && (settings.enabled ? core.currentEffect(weather.state.current) : settings.mode)==='clouds'});
     const display = screen.getAllDisplays().find(d => d.id === id);
     const front = windows.find(w => w.id === foreground);
     const b = display?.bounds;
@@ -94,24 +98,26 @@ function applyWindows() {
   }
 }
 function rebuild() {
-  for (const win of overlays.values()) win.close();
-  overlays.clear();
+  if(quitting)return;
+  const previous=[...overlays.values()];overlays.clear();
+  for (const win of previous) if(!win.isDestroyed())win.close();
   for (const display of screen.getAllDisplays()) {
     const win = new BrowserWindow({ ...display.bounds, frame: false, transparent: true, backgroundColor: '#00000000',
       hasShadow: false, resizable: false, movable: false, focusable: false, skipTaskbar: true,
       fullscreenable: false, show: false, webPreferences: preferences() });
     win.setIgnoreMouseEvents(true,{forward:true}); win.setAlwaysOnTop(true, 'screen-saver'); secure(win);
     overlays.set(display.id, win);
+    win.on('closed',()=>{if(overlays.get(display.id)===win)overlays.delete(display.id);});
     win.loadFile(path.join(__dirname, 'overlay.html'));
     win.once('ready-to-show', () => { applyWindows(); broadcast(); environment(); });
   }
 }
 function environment() {
-  if (!settings) return;
+  if (!settings || quitting) return;
   const cursor = screen.getCursorScreenPoint();
   for (const [id, win] of overlays) {
     const d = screen.getAllDisplays().find(item => item.id === id); if (!d) continue;
-    send(win, 'environment', { cursor: { x: cursor.x - d.bounds.x, y: cursor.y - d.bounds.y },
+    send(win, 'environment', { cloudModifier: controlHeld(), cursor: { x: cursor.x - d.bounds.x, y: cursor.y - d.bounds.y },
       ground: d.workArea.y + d.workArea.height - d.bounds.y,
       windows: settings.onWindows ? windows.map(w => ({ ...w, x: w.x - d.bounds.x, y: w.y - d.bounds.y })) : [] });
   }
@@ -121,12 +127,14 @@ function startHelper() {
   const script = fs.readFileSync(path.join(__dirname, 'windows.ps1'), 'utf8').replace('__SUGROB_PID__', String(process.pid));
   const executable = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
   helper = spawn(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const unavailable = () => { windows = []; windowStatus = 'Края окон недоступны. Накопление внизу экрана работает.'; broadcast(); };
+  const unavailable = () => { if(quitting)return; cloudModifier=false;modifierAt=0;windows = []; windowStatus = 'Края окон недоступны. Накопление внизу экрана работает.'; broadcast(); };
   helper.on('error', unavailable); helper.on('exit', unavailable);
   helper.stderr.on('data', () => {});
   createInterface({ input: helper.stdout }).on('line', line => {
+    if(quitting)return;
     try {
       const data = JSON.parse(line);
+      cloudModifier=data.ctrl===true;modifierAt=Date.now();
       windows = (Array.isArray(data.windows) ? data.windows : []).map(w => ({ id: w.id, ...screen.screenToDipRect(null, { x: w.x, y: w.y, width: w.width, height: w.height }) }));
       foreground = data.foreground;
       if (windowStatus !== 'Края окон доступны.') { windowStatus = 'Края окон доступны.'; broadcast(); }
@@ -144,7 +152,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (app.isReady()) showSettings(); });
   app.on('window-all-closed', () => {});
-  app.on('before-quit', () => { quitting = true; helper?.kill(); weather.close(); });
+  app.on('before-quit', () => { quitting = true;cloudModifier=false;overlays.clear();refraction.clear();helper?.kill();weather.close(); });
   app.whenReady().then(async () => {
     app.setAppUserModelId('local.sugrob.windows');
     Menu.setApplicationMenu(null);
@@ -178,9 +186,10 @@ else {
     ipcMain.handle('camera-reload', e => { authorized(e, true); inlineCamera?.reload(); });
     ipcMain.handle('refresh', e => { authorized(e, true); void weather.refresh(); });
     ipcMain.on('cloud-interactive',(e,value)=>{
+      if(quitting || e.sender.isDestroyed())return;
       authorized(e);
-      const win=[...overlays.values()].find(w=>w.webContents===e.sender);
-      const allowed=settings.dragClouds&&!settings.paused&&(settings.enabled?core.currentEffect(weather.state.current):settings.mode)==='clouds';
+      const win=[...overlays.values()].find(w=>!w.isDestroyed()&&w.webContents===e.sender);
+      const allowed=controlHeld()&&settings.dragClouds&&!settings.paused&&(settings.enabled?core.currentEffect(weather.state.current):settings.mode)==='clouds';
       if (win) {
         const interactive = allowed && value === true;
         overlayPolicy.input(win, interactive);

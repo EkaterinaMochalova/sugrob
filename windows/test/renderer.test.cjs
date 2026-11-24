@@ -207,9 +207,9 @@ test('Cloud drag preserves grab offset, saves height, restores click-through and
  const r=renderer();
  r.run('renderState({settings:window.Sugrob.normalize({mode:"clouds",dragClouds:true}),weather:{current:null}})');
  const p=JSON.parse(r.run('JSON.stringify(falling[2])'));
- r.handlers.mousedown({button:0,clientX:p.x+5,clientY:p.y+5,pointerId:1,preventDefault(){}});
+ r.handlers.mousedown({button:0,ctrlKey:true,clientX:p.x+5,clientY:p.y+5,pointerId:1,preventDefault(){}});
  assert.equal(r.run('cloudDrag.cloud===falling[2]'),true);
- r.handlers.mousemove({clientX:800,clientY:545});
+ r.handlers.mousemove({ctrlKey:true,clientX:800,clientY:545});
  assert.equal(r.run('falling[2].y'),540);
  r.run('tick(.04)');assert.equal(r.run('falling[2].x'),795);
  r.handlers.mouseup();
@@ -225,9 +225,9 @@ test('Cloud drag preserves grab offset, saves height, restores click-through and
 test('Cloud drag releases when mouse-up occurs outside the overlay',()=>{
  const r=renderer();r.run('renderState({settings:window.Sugrob.normalize({mode:"clouds",dragClouds:true}),weather:{current:null}})');
  const p=JSON.parse(r.run('JSON.stringify(falling[2])'));
- r.handlers.mousedown({button:0,clientX:p.x,clientY:p.y,preventDefault(){}});
- r.handlers.mousemove({clientX:800,clientY:500,buttons:1});
- r.handlers.mousemove({clientX:900,clientY:600,buttons:0});
+ r.handlers.mousedown({button:0,ctrlKey:true,clientX:p.x,clientY:p.y,preventDefault(){}});
+ r.handlers.mousemove({ctrlKey:true,clientX:800,clientY:500,buttons:1});
+ r.handlers.mousemove({ctrlKey:true,clientX:900,clientY:600,buttons:0});
  assert.equal(r.run('cloudDrag'),null);assert.equal(r.saved.length,1);
  r.handlers.blur();assert.equal(r.input.at(-1),false);
 });
@@ -297,4 +297,16 @@ test('Global cursor samples disperse fog without claiming input and reset after 
  assert.equal(r.run('JSON.stringify(fogMotion.banks)'),before);
  r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'sunny'}),weather:{current:null}})})`);
  assert.ok(r.run('fogMotion.banks.every(b=>b.clearing===0&&b.offset===0)'));
+});
+
+test('Clouds ignore clicks without Ctrl and release immediately when Ctrl is released',()=>{
+ const r=renderer();r.run('renderState({settings:window.Sugrob.normalize({mode:"clouds",dragClouds:true}),weather:{current:null}})');
+ const p=JSON.parse(r.run('JSON.stringify(falling[2])'));
+ r.environment({cursor:{x:p.x,y:p.y},windows:[],ground:1080,cloudModifier:false});r.run('cloudHitMode()');
+ r.handlers.mousedown({button:0,ctrlKey:false,clientX:p.x,clientY:p.y});assert.equal(r.run('cloudDrag'),null);assert.notEqual(r.input.at(-1),true);
+ r.environment({cursor:{x:p.x,y:p.y},windows:[],ground:1080,cloudModifier:true});r.run('cloudHitMode()');assert.equal(r.input.at(-1),true);
+ r.handlers.mousedown({button:0,ctrlKey:true,clientX:p.x,clientY:p.y,preventDefault(){}});
+ r.handlers.mousemove({ctrlKey:true,clientX:p.x+40,clientY:p.y+40,buttons:1});
+ r.environment({cursor:{x:p.x+40,y:p.y+40},windows:[],ground:1080,cloudModifier:false});
+ assert.equal(r.run('cloudDrag'),null);assert.equal(r.input.at(-1),false);assert.equal(r.saved.length,1);
 });

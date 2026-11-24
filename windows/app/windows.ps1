@@ -17,6 +17,8 @@ public static class SugrobDesktop {
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
     [DllImport("user32.dll")] static extern int GetClassName(IntPtr h, StringBuilder text, int length);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+    public static bool ControlHeld() { return (GetAsyncKeyState(0x11) & 0x8000) != 0; }
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out Rect r);
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
     [DllImport("dwmapi.dll", EntryPoint="DwmGetWindowAttribute")] static extern int Frame(IntPtr h, int a, out Rect r, int size);
@@ -39,8 +41,12 @@ public static class SugrobDesktop {
     }
 }
 '@
+$tick = 0
+$windows = @()
 while ($true) {
-    $snapshot = @{ windows = @([SugrobDesktop]::Read(__SUGROB_PID__)); foreground = [SugrobDesktop]::GetForegroundWindow().ToInt64().ToString() }
+    if ($tick % 10 -eq 0) { $windows = @([SugrobDesktop]::Read(__SUGROB_PID__)) }
+    $tick++
+    $snapshot = @{ windows = $windows; ctrl = [SugrobDesktop]::ControlHeld(); foreground = [SugrobDesktop]::GetForegroundWindow().ToInt64().ToString() }
     ConvertTo-Json -InputObject $snapshot -Compress -Depth 4
-    Start-Sleep -Milliseconds 500
+    Start-Sleep -Milliseconds 50
 }

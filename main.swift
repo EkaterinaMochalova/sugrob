@@ -430,12 +430,15 @@ final class SnowScene: SKScene {
     }
     override func mouseDown(with event: NSEvent) {
         let point = event.location(in: self)
-        guard let f = cloudAt(point) else { return }
+        guard event.modifierFlags.contains(.command), let f = cloudAt(point) else { return }
         draggedCloud = f
         cloudOffset = CGPoint(x: point.x - f.node.position.x, y: point.y - f.node.position.y)
     }
-    override func mouseDragged(with event: NSEvent) { moveCloud(event.location(in: self)) }
-    override func mouseUp(with event: NSEvent) { moveCloud(event.location(in: self)); finishCloudDrag(); updateCloudInput() }
+    override func mouseDragged(with event: NSEvent) {
+        guard event.modifierFlags.contains(.command) else { finishCloudDrag(); updateCloudInput(); return }
+        moveCloud(event.location(in: self))
+    }
+    override func mouseUp(with event: NSEvent) { if event.modifierFlags.contains(.command) { moveCloud(event.location(in: self)) }; finishCloudDrag(); updateCloudInput() }
     private func moveCloud(_ point: CGPoint) {
         guard let f = draggedCloud else { return }
         f.node.position = CGPoint(x: min(size.width - 10, max(10, point.x - cloudOffset.x)), y: min(size.height - 10, max(10, point.y - cloudOffset.y)))
@@ -452,8 +455,9 @@ final class SnowScene: SKScene {
     private func updateCloudInput() {
         let p = NSEvent.mouseLocation
         let local = CGPoint(x: p.x - origin.x, y: p.y - origin.y)
-        if draggedCloud != nil && NSEvent.pressedMouseButtons & 1 == 0 { finishCloudDrag() }
-        view?.window?.ignoresMouseEvents = !(draggedCloud != nil || cloudAt(local) != nil)
+        let command = NSEvent.modifierFlags.contains(.command)
+        if draggedCloud != nil && (!command || NSEvent.pressedMouseButtons & 1 == 0) { finishCloudDrag() }
+        view?.window?.ignoresMouseEvents = !(command && (draggedCloud != nil || cloudAt(local) != nil))
     }
     func resetCloudHeights() {
         finishCloudDrag()
@@ -953,8 +957,8 @@ struct SettingsView: View {
                 Text("Во время дождя или грозы: мокрое стекло на 18 секунд, с перерывами.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Облака") {
-                Toggle("Перетаскивать облака", isOn: $dragClouds)
-                Text("Зажми облако мышью и перемести. Следующее облако той же формы пойдёт на этой высоте. Вне облаков клики проходят к окнам.").font(.caption).foregroundStyle(.secondary)
+                Toggle("Перетаскивать облака с ⌘", isOn: $dragClouds)
+                Text("Удерживай ⌘ и перетаскивай облако. Следующее облако той же формы пойдёт на этой высоте.").font(.caption).foregroundStyle(.secondary)
                 Button("Вернуть облака наверх") { NotificationCenter.default.post(name: .resetCloudHeights, object: nil) }
             }
             Section("Ясно · солнечный свет") {
