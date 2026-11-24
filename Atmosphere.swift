@@ -599,6 +599,36 @@ final class RainGlassNode: SKNode {
     }
 }
 
+struct FogDrift {
+    struct Bank { var offset: CGFloat = 0, velocity: CGFloat = 0, clearing: CGFloat = 0 }
+    var banks = Array(repeating: Bank(), count: 6)
+    private var previous: (point: CGPoint, time: Double)?
+    mutating func reset() { banks = Array(repeating: Bank(), count: 6); previous = nil }
+    mutating func move(_ point: CGPoint, time: Double, size: CGSize) {
+        let old = previous
+        previous = (point, time)
+        guard point.x >= 0, point.x <= size.width, point.y >= 0, point.y <= size.height * 0.28,
+              let old, old.point.x >= 0, old.point.x <= size.width, old.point.y >= 0, old.point.y <= size.height * 0.28 else { return }
+        let dt = time - old.time, dx = point.x-old.point.x, distance = hypot(dx,point.y-old.point.y)
+        guard dt >= 0.008, dt <= 0.2, distance >= 12, distance < size.width * 0.5, distance / dt > 650 else { return }
+        let force = min(1, CGFloat(distance / dt - 650) / 1400)
+        for i in banks.indices {
+            let center = size.width * (0.05 + CGFloat(i)*0.18)
+            let influence = exp(-pow((point.x-center)/max(120,size.width*0.24),2))
+            let direction: CGFloat = abs(dx) > 4 ? (dx > 0 ? 1 : -1) : (center > point.x ? 1 : -1)
+            banks[i].velocity = max(-240,min(240,banks[i].velocity+direction*force*influence*180))
+            banks[i].clearing = min(1,banks[i].clearing+force*influence*0.7)
+        }
+    }
+    mutating func tick(_ dt: CGFloat) {
+        for i in banks.indices {
+            banks[i].offset = max(-180,min(180,(banks[i].offset+banks[i].velocity*dt)*exp(-dt*0.7)))
+            banks[i].velocity *= exp(-dt*2.2)
+            banks[i].clearing *= exp(-dt*0.55)
+        }
+    }
+}
+
 // Wide, feathered banks below the screen edge: no hard horizon or floating cloud outlines.
 final class GroundFogNode: SKNode {
     private let banks: [SKSpriteNode] = (0..<6).map { _ in
@@ -612,6 +642,11 @@ final class GroundFogNode: SKNode {
         """)
         return node
     }
+    private var drift = FogDrift()
+    func moveCursor(_ point: CGPoint, time: Double) {
+        guard active, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        drift.move(point, time: time, size: area)
+    }
     private var area = CGSize.zero, phase: CGFloat = 0, amount: CGFloat = 1, heightScale: CGFloat = 1, flowSpeed: CGFloat = 1
     private(set) var active = false
     override init() { super.init(); banks.forEach { addChild($0) }; isHidden = true }
@@ -619,11 +654,13 @@ final class GroundFogNode: SKNode {
     func configure(active: Bool, size: CGSize, strength: CGFloat, intensity: CGFloat, scale: CGFloat, speed: CGFloat) {
         self.active = active; area = size; self.amount = min(1.8, max(0.3, intensity)); heightScale = scale; flowSpeed = speed
         alpha = strength; isHidden = !active
+        if !active { drift.reset() }
         layoutBanks()
     }
     func tick(_ dt: CGFloat) {
         guard active else { return }
-        if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { phase += dt * flowSpeed }
+        if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { phase += dt * flowSpeed; drift.tick(dt) }
+        else { drift.reset() }
         layoutBanks()
     }
     private func layoutBanks() {
@@ -632,7 +669,8 @@ final class GroundFogNode: SKNode {
             let k = CGFloat(i)
             bank.size = CGSize(width: area.width * (0.9 + 0.13 * CGFloat(i % 3)), height: band * (1.7 + 0.13 * CGFloat(i % 2)))
             bank.position = CGPoint(x: area.width * (0.05 + k * 0.18 + sin(phase * 0.023 + k * 1.9) * 0.10), y: -band * (0.12 + 0.10 * sin(phase * 0.017 + k)))
-            bank.alpha = amount * (0.85 + 0.15 * sin(phase * 0.019 + k))
+            bank.position.x += drift.banks[i].offset
+            bank.alpha = amount * (0.85 + 0.15 * sin(phase * 0.019 + k)) * (1-drift.banks[i].clearing*0.9)
         }
     }
 }

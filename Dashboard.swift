@@ -134,7 +134,6 @@ struct DashboardView: View {
                                 ForEach(weather.results) { city in
                                     Button(city.title) { editorCity = CityPortrait.matching(city) == .neutral ? city : CityPortrait.matching(city).city; editingCity = true }.buttonStyle(.link)
                                 }
-                                Text("Город и свои YouTube-камеры можно сохранить через «Мои камеры».").font(.caption).foregroundStyle(.secondary)
                             }.padding(.top, 8)
                         }.font(.system(size: 12))
                         Link("Погода: Open-Meteo · Города: GeoNames", destination: URL(string: "https://open-meteo.com/")!).font(.system(size: 10)).opacity(0.6)
@@ -194,9 +193,6 @@ struct DashboardView: View {
                 Picker("Мой эффект", selection: $manualMode) {
                     ForEach(Mode.allCases) { Text($0.title).tag($0) }
                 }.pickerStyle(.menu)
-                Text("Эффект выбран вручную. Камеры можно смотреть независимо от него.").font(.caption).foregroundStyle(.secondary)
-            } else {
-                Text("Эффект определяется погодой выбранного города.").font(.caption).foregroundStyle(.secondary)
             }
             HStack { Text("Количество").font(.caption).frame(width: 80, alignment: .leading); Slider(value: $intensity, in: 0.1...3) }
             HStack { Text("Скорость").font(.caption).frame(width: 80, alignment: .leading); Slider(value: $speed, in: 0.3...2.5) }
@@ -267,11 +263,10 @@ struct DashboardView: View {
                 Spacer()
                 Text(weather.enabled ? "АВТО" : "ВЫКЛ").font(.system(size: 10, weight: .semibold))
             }
-            Text(city.id == -2 ? "Open-Meteo · район Ватикана" : "Open-Meteo · погода в районе города").font(.caption).foregroundStyle(.secondary)
+            if city.id == -2 { Text("Район Ватикана").font(.caption).foregroundStyle(.secondary) }
             if let current = weather.current {
                 Text("\(Int(current.temperature_2m.rounded()))° · \(current.description)").font(.system(size: 22, weight: .light))
-                if current.effect == .fog { Text("Туман мягко стелется вдоль нижнего края экрана.").font(.caption).foregroundStyle(.secondary) }
-                if current.effect == nil { Text(current.precipitationNote).font(.caption).foregroundStyle(.secondary) }
+                if current.effect == nil && current.precipitation == nil { Text(current.precipitationNote).font(.caption).foregroundStyle(.secondary) }
             } else { Text(weather.loading ? "Узнаём погоду…" : weather.enabled ? "Погода пока недоступна." : "Включи погоду города, чтобы обновить данные.").font(.caption) }
             if let error = weather.error { Text(error).font(.caption).foregroundStyle(.red) }
             HStack {
@@ -279,7 +274,6 @@ struct DashboardView: View {
                 Spacer()
                 Button("Обновить") { weather.refresh() }.disabled(weather.loading || !weather.enabled).buttonStyle(.borderless).font(.caption)
             }
-            if !weather.enabled { Text("Включён ручной эффект. Его можно изменить в настройках.").font(.caption).foregroundStyle(.secondary) }
         }.padding(20).background(Color.white.opacity(0.7)).cornerRadius(16)
     }
 }
@@ -302,11 +296,10 @@ struct SoundControls: View {
             Picker("Источник звука", selection: $source) {
                 Text("Звуки города").tag("city")
                 Text("Звуки погоды").tag("weather")
-            }.pickerStyle(.segmented)
+            }.pickerStyle(.segmented).help("Отдельно от звука live-камеры")
             if source == "weather" {
                 Text(effect == .rain ? "Дождь" : effect == .storm ? "Дождь и раскаты грома" : "Для этой погоды звука пока нет — тишина.").font(.caption)
                 Slider(value: $weatherVolume, in: 0...1) { Text("Громкость погоды") }
-                Text("Дождь звучит непрерывно. Гром — после молнии, с задержкой 0,8–1,8 с.").font(.caption).foregroundStyle(.secondary)
             } else {
                 if weather.city.map({ CityPortrait.matching($0) == .florence }) == true {
                     Picker("Запись", selection: $bells) { Text("Площадь").tag(false); Text("Колокола").tag(true) }.pickerStyle(.segmented)
@@ -317,7 +310,6 @@ struct SoundControls: View {
                 }
             }
             if paused { Text("Звук на паузе вместе с эффектами.").font(.caption) }
-            Text("Отдельно от звука live-камеры").font(.caption).foregroundStyle(.secondary)
         }
     }
 }

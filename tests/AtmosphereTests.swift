@@ -1,6 +1,27 @@
 import AppKit
 
 func checkAtmosphere() throws {
+    var fogDrift = FogDrift()
+    let fogArea = CGSize(width: 1200, height: 800)
+    fogDrift.move(CGPoint(x:100,y:40), time:0, size:fogArea)
+    fogDrift.move(CGPoint(x:105,y:40), time:0.05, size:fogArea)
+    precondition(fogDrift.banks.allSatisfy { $0.clearing == 0 })
+    fogDrift.move(CGPoint(x:205,y:40), time:0.1, size:fogArea)
+    precondition(fogDrift.banks.contains { $0.clearing > 0.1 })
+    fogDrift.tick(0.05)
+    precondition(fogDrift.banks.contains { $0.offset > 0 })
+    for _ in 0..<400 { fogDrift.tick(0.05) }
+    precondition(fogDrift.banks.allSatisfy { $0.clearing < 0.001 && abs($0.offset) < 0.01 })
+    fogDrift.reset()
+    fogDrift.move(CGPoint(x:100,y:400), time:0, size:fogArea)
+    fogDrift.move(CGPoint(x:200,y:400), time:0.05, size:fogArea)
+    precondition(fogDrift.banks.allSatisfy { $0.clearing == 0 })
+    fogDrift.reset()
+    fogDrift.move(CGPoint(x:100,y:40), time:0, size:fogArea)
+    fogDrift.move(CGPoint(x:200,y:40), time:1, size:fogArea)
+    precondition(fogDrift.banks.allSatisfy { $0.clearing == 0 })
+    print("PASS: fog ignores slow/high motion and pause gaps; sharp sweeps disperse it and recover")
+
     let parse = ISO8601DateFormatter()
     let winter = parse.date(from: "2026-01-15T12:00:00Z")!
     let summer = parse.date(from: "2026-06-15T12:00:00Z")!

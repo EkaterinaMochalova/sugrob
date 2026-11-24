@@ -11,6 +11,7 @@ let falling = [], resting = [], motes = [], windows = [], cursor = { x: -1000, y
 const sounds = new window.Soundscape();
 const sunlight = new window.Sunlight();
 const glass = new window.RainGlass();
+const fogMotion = new window.FogMotion();
 const photos = Object.fromEntries(['autumn','olive','pine','maple','cherry','gull'].map(name => { const image = new Image(); image.src = `assets/${name}.png`; return [name, image]; }));
 let events = [], eventWait = 1;
 let lastFrame = 0, spawnDebt = 0, moteWait = 2, time = 0, lastClock = 0;
@@ -30,7 +31,9 @@ function updateMood() {
 function renderState(next) {
   state = next; const s = state.settings;
   if(!s.dragClouds || s.paused) finishCloudDrag();
+  if(s.paused)fogMotion.previous=null;
   mode = s.enabled ? C.currentEffect(next.weather.current) : s.mode;
+  if(mode!=='fog')fogMotion.reset();
   const key = String(mode);
   if (key !== modeKey) {
     if(mode&&!(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches))canvas.animate?.([{opacity:0},{opacity:1}],{duration:900,easing:'ease-out'});
@@ -67,6 +70,8 @@ api.onResetClouds(()=>{cloudDrag=null;for(const p of falling)if(p.kind==='clouds
 function release(p) { p.surface = null; p.vx = (Math.random() - .5) * 85; p.vy = 22; p.life = 3; falling.push(p); }
 api.onEnvironment(data => {
   cursor = data.cursor; ground = data.ground;
+  if(mode==='fog'&&!state?.settings.paused&&!(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches))fogMotion.move(cursor.x,h-cursor.y,Date.now()/1000,w,h);
+  else fogMotion.previous=null;
   const previous = new Map(windows.map(win => [win.id, win])); windows = data.windows;
   const next = new Map(windows.map(win => [win.id, win]));
   resting = resting.filter(p => {
@@ -153,6 +158,7 @@ api.onLightningPreview(() => {
   lastPreview=time; previewBolt=makeBolt(); sounds.strike();
 });
 function tick(dt) {
+  if(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches)fogMotion.reset();else fogMotion.tick(dt);
   const s = state.settings; time += dt; sunlight.tick(dt); glass.tick(dt);
   if(previewBolt) { previewBolt.age+=dt; if(previewBolt.age>=.65 || !s.lightning) previewBolt=null; }
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -290,10 +296,10 @@ function drawGroundFog(c,width,height,s){
  const amount=Math.min(1.8,Math.max(.3,s.intensity));
  for(let i=0;i<6;i++){
   const rx=width*(.9+.13*(i%3))/2,ry=band*(1.7+.13*(i%2))/2;
-  const x=width*(.05+i*.18+Math.sin(t*s.speed*.023+i*1.9)*.10);
+  const x=width*(.05+i*.18+Math.sin(t*s.speed*.023+i*1.9)*.10)+fogMotion.banks[i].offset;
   const y=height+band*(.12+.10*Math.sin(t*s.speed*.017+i));
   c.save();c.translate(x,y);c.scale(rx,ry);
-  c.globalAlpha=s.opacity*amount*(.85+.15*Math.sin(t*s.speed*.019+i));
+  c.globalAlpha=s.opacity*amount*(.85+.15*Math.sin(t*s.speed*.019+i))*(1-fogMotion.banks[i].clearing*.9);
   const g=c.createRadialGradient(0,0,0,0,0,1);
   g.addColorStop(0,'rgba(219,224,222,.12)');g.addColorStop(.5,'rgba(219,224,222,.06)');g.addColorStop(1,'rgba(219,224,222,0)');
   c.fillStyle=g;c.fillRect(-1,-1,2,2);c.restore();

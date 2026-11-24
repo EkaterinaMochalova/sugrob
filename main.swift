@@ -387,6 +387,8 @@ final class SnowScene: SKScene {
         guard raw > 0, !isPaused else { return }
         updateCloudInput()
         sun.tick(raw)
+        let fogMouse = NSEvent.mouseLocation
+        fog.moveCursor(CGPoint(x: fogMouse.x-origin.x, y: fogMouse.y-origin.y), time: currentTime)
         fog.tick(raw)
         glass.tick(raw)
         atmosphere.tick(TimeInterval(raw))

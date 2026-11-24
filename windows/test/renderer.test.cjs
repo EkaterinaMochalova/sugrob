@@ -19,7 +19,7 @@ function renderer() {
     setInterval(fn){timers.push(fn);}, devicePixelRatio: 1.5, addEventListener(name, fn) { handlers[name] = fn; }, requestAnimationFrame() {}, console,
     sugrob: { onRainGlassPreview() {}, cloudInteractive(v) { input.push(v); }, saveCloudLevel:async(v,y)=>{saved.push([v,y]);}, onResetClouds() {}, onSunlightPreview() {}, onLightningPreview(fn) { lightningPreview = fn; }, onPreview(fn) { preview = fn; }, onEnvironment(fn) { environment = fn; }, onClear(fn) { clear = fn; }, subscribe() {}, state: async () => initial } };
   context.window = context; vm.createContext(context);
-  for (const file of ['core.js', 'art.js', 'sunlight.js', 'rain-glass.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
+  for (const file of ['core.js', 'art.js', 'sunlight.js', 'rain-glass.js', 'fog-motion.js', 'overlay.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../app', file), 'utf8'), context, { filename: file });
   return { timers, handlers, saved, input, run: source => vm.runInContext(source, context), environment: data => environment(data), clear: () => clear(), preview: () => preview(), lightningPreview: () => lightningPreview() };
 }
 test('Canvas renderer handles all portraits and weather modes with bounded particle counts', () => {
@@ -283,4 +283,18 @@ test('Ground fog creates no falling particles, freezes on pause and clears on a 
  const t=r.run('time');r.run('state.settings.paused=true;for(let i=0;i<20;i++)frame(i*40)');assert.equal(r.run('time'),t);
  r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'sunny'}),weather:{current:null}})})`);
  assert.equal(r.run('mode'),'sunny');r.run('draw()');
+});
+
+test('Global cursor samples disperse fog without claiming input and reset after switching effect',()=>{
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'fog'}),weather:{current:null}})})`);
+ r.run('var fogNow=1000;Date.now=()=>fogNow');
+ r.environment({cursor:{x:400,y:1040},ground:1080,windows:[]});
+ r.run('fogNow+=50');r.environment({cursor:{x:500,y:1040},ground:1080,windows:[]});
+ assert.ok(r.run('fogMotion.banks.some(b=>b.clearing>0)'));assert.ok(!r.input.includes(true));
+ r.run('state.settings.paused=true');const before=r.run('JSON.stringify(fogMotion.banks)');
+ r.run('fogNow+=50');r.environment({cursor:{x:600,y:1040},ground:1080,windows:[]});
+ assert.equal(r.run('JSON.stringify(fogMotion.banks)'),before);
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'sunny'}),weather:{current:null}})})`);
+ assert.ok(r.run('fogMotion.banks.every(b=>b.clearing===0&&b.offset===0)'));
 });

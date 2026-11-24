@@ -75,7 +75,8 @@ function render(next) {
   $('quick-intensity').value = s.intensity; $('quick-speed').value = s.speed;
   $('quick-pause').textContent = s.paused ? 'Продолжить эффекты' : 'Пауза эффектов';
   for (const button of $('presets').children) button.setAttribute('aria-pressed', String(button.dataset.city === portrait?.portrait));
-  $('city-detail').textContent = s.city ? 'Погода выбранного города на рабочем столе.' : '';
+  $('city-detail').textContent = '';
+  $('city-detail').hidden = true;
   $('atmosphere').disabled = !s.city;
   $('strength').disabled = !s.enabled || !s.atmosphere; $('mode').disabled = s.enabled;
   $('test-rain-glass').disabled=s.paused||!s.rainGlass||!['rain','storm'].includes(s.enabled?C.currentEffect(next.weather.current):s.mode);
@@ -88,7 +89,8 @@ function render(next) {
   $('volume').parentElement.hidden = weatherSound;
   $('weather-volume-label').hidden = !weatherSound;
   const track = C.soundTrack(s,next.weather.current);
-  $('sound-note').textContent = weatherSound ? (track ? 'Дождь непрерывен · гром через 0,8–1,8 с после молнии.' : 'Для этой погоды звука пока нет — тишина.') : (hasSound ? 'Запись города, не прямая трансляция.' : 'Для этого города записи пока нет.');
+  $('sound-note').textContent = weatherSound ? (track ? '' : 'Для этой погоды звука пока нет.') : (hasSound ? '' : 'Для этого города записи пока нет.');
+  $('sound-note').hidden = !$('sound-note').textContent;
   $('atmosphere').parentElement.hidden = !hasSound;
   $('florence-choice').hidden = portrait?.portrait !== 'florence' || !s.sound || weatherSound;
   $('volume').disabled = !s.sound;
