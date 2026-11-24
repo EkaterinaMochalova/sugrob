@@ -168,3 +168,12 @@ test('Every displayed theme survives saving; sunny remains a weather effect',()=
  for(const theme of values)assert.equal(C.normalize({theme}).theme,theme);
  assert.equal(C.normalize({mode:'sunny'}).mode,'sunny');
 });
+
+test('Fog is independent of precipitation and available as a manual effect',()=>{
+ for(const weather_code of [45,48]){
+  assert.equal(C.currentEffect({weather_code,precipitation:0}),'fog');
+  assert.equal(C.currentEffect({weather_code}),'fog');
+  assert.equal(C.currentDescription({weather_code,precipitation:0}),'Туман');
+ }
+ assert.equal(C.normalize({mode:'fog'}).mode,'fog');
+});

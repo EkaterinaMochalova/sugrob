@@ -33,7 +33,7 @@
     for (const [key, min, max] of [['intensity', .1, 3], ['speed', .3, 2.5], ['size', .5, 2.5], ['opacity', .1, 1], ['strength', .15, 1], ['volume', 0, 1], ['weatherVolume', 0, 1], ['drift', 300, 6000]]) {
       if (Number.isFinite(input[key])) s[key] = clamp(input[key], min, max);
     }
-    if (['snow', 'rain', 'leaves', 'petals', 'clouds', 'storm', 'sunny'].includes(input.mode)) s.mode = input.mode;
+    if (['snow', 'rain', 'leaves', 'petals', 'clouds', 'storm', 'sunny', 'fog'].includes(input.mode)) s.mode = input.mode;
     if (['sage','sand','redleaf','blue','rocks','clouds'].includes(input.theme)) s.theme = input.theme;
     if (input.theme === 'lavender') s.theme = 'blue';
     if (input.soundSource === 'weather') s.soundSource = 'weather';
@@ -51,6 +51,7 @@
   function currentEffect(current) {
     if ([0,1].includes(current?.weather_code)) return 'sunny';
     if ([2,3].includes(current?.weather_code)) return 'clouds';
+    if ([45,48].includes(current?.weather_code)) return 'fog';
     return Number.isFinite(current?.precipitation) && current.precipitation > 0 ? effect(current.weather_code) : null;
   }
   function currentDescription(current) {

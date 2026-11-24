@@ -275,3 +275,12 @@ test('Late captured frames cannot restore refraction after disabling it', async(
  r.run('resolveFrame("data:image/png;base64,test")');await pending;
  assert.equal(r.run('glass.desktop'),null);
 });
+
+test('Ground fog creates no falling particles, freezes on pause and clears on a dry sunny transition',()=>{
+ const r=renderer();
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'fog'}),weather:{current:null}})})`);
+ r.run('for(let i=0;i<500;i++){tick(.04);draw()}');assert.equal(r.run('falling.length'),0);
+ const t=r.run('time');r.run('state.settings.paused=true;for(let i=0;i<20;i++)frame(i*40)');assert.equal(r.run('time'),t);
+ r.run(`renderState(${JSON.stringify({settings:C.normalize({mode:'sunny'}),weather:{current:null}})})`);
+ assert.equal(r.run('mode'),'sunny');r.run('draw()');
+});

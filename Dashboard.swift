@@ -263,13 +263,14 @@ struct DashboardView: View {
     private func weatherCard(_ city: WeatherCity) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Погода на рабочем столе", systemImage: weather.current?.effect == .sunny ? "sun.max" : "cloud.rain").font(.system(size: 14, weight: .medium))
+                Label("Погода на рабочем столе", systemImage: weather.current?.effect == .sunny ? "sun.max" : weather.current?.effect == .fog ? "cloud.fog" : "cloud.rain").font(.system(size: 14, weight: .medium))
                 Spacer()
                 Text(weather.enabled ? "АВТО" : "ВЫКЛ").font(.system(size: 10, weight: .semibold))
             }
             Text(city.id == -2 ? "Open-Meteo · район Ватикана" : "Open-Meteo · погода в районе города").font(.caption).foregroundStyle(.secondary)
             if let current = weather.current {
                 Text("\(Int(current.temperature_2m.rounded()))° · \(current.description)").font(.system(size: 22, weight: .light))
+                if current.effect == .fog { Text("Туман мягко стелется вдоль нижнего края экрана.").font(.caption).foregroundStyle(.secondary) }
                 if current.effect == nil { Text(current.precipitationNote).font(.caption).foregroundStyle(.secondary) }
             } else { Text(weather.loading ? "Узнаём погоду…" : weather.enabled ? "Погода пока недоступна." : "Включи погоду города, чтобы обновить данные.").font(.caption) }
             if let error = weather.error { Text(error).font(.caption).foregroundStyle(.red) }

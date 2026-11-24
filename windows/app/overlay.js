@@ -165,7 +165,7 @@ function tick(dt) {
     }
   } else { bolt = null; stormWait = 8; }
   if (Date.now() - lastClock > 60000) { lastClock = Date.now(); updateMood(); }
-  if (mode && mode !== 'sunny') {
+  if (mode && mode !== 'sunny' && mode !== 'fog') {
     spawnDebt += dt * (mode === 'clouds' ? .025 : (mode === 'rain' || mode === 'storm') ? 110 : 42) * s.intensity * w / 1440;
     while (spawnDebt >= 1 && falling.length < (mode === 'clouds' ? 7 : 900)) { spawn(s); spawnDebt--; }
     spawnDebt = Math.min(spawnDebt, 4);
@@ -222,6 +222,7 @@ function tick(dt) {
 function draw() {
   const s = state.settings; ctx.clearRect(0, 0, w, h);
   sunlight.draw(ctx,w,h);
+  if(mode==='fog')drawGroundFog(ctx,w,h,state.settings);
   if(s.dragClouds && !s.paused && mode==='clouds'){
     ctx.save();ctx.globalAlpha=1;ctx.fillStyle='rgba(255,255,255,0.004)';
     for(const p of falling){ctx.beginPath();ctx.ellipse(p.x,p.y,p.size*(p.variant===1?2:3)*p.stretch*.42,p.size*.34,0,0,Math.PI*2);ctx.fill();}
@@ -282,3 +283,19 @@ setInterval(async()=>{
   if(epoch===refractionEpoch&&state?.settings.rainRefraction&&!state.settings.paused&&glass.active&&glass.drops.length)glass.setDesktop(image);
  }catch{glass.setDesktop(null);}finally{refractionPending=false;}
 },250);
+
+function drawGroundFog(c,width,height,s){
+ const t=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches?0:time;
+ const band=Math.min(height*.28,230*Math.min(1.4,Math.max(.7,s.size)));
+ const amount=Math.min(1.8,Math.max(.3,s.intensity));
+ for(let i=0;i<6;i++){
+  const rx=width*(.9+.13*(i%3))/2,ry=band*(1.7+.13*(i%2))/2;
+  const x=width*(.05+i*.18+Math.sin(t*s.speed*.023+i*1.9)*.10);
+  const y=height+band*(.12+.10*Math.sin(t*s.speed*.017+i));
+  c.save();c.translate(x,y);c.scale(rx,ry);
+  c.globalAlpha=s.opacity*amount*(.85+.15*Math.sin(t*s.speed*.019+i));
+  const g=c.createRadialGradient(0,0,0,0,0,1);
+  g.addColorStop(0,'rgba(219,224,222,.12)');g.addColorStop(.5,'rgba(219,224,222,.06)');g.addColorStop(1,'rgba(219,224,222,0)');
+  c.fillStyle=g;c.fillRect(-1,-1,2,2);c.restore();
+ }
+}

@@ -598,3 +598,41 @@ final class RainGlassNode: SKNode {
         }
     }
 }
+
+// Wide, feathered banks below the screen edge: no hard horizon or floating cloud outlines.
+final class GroundFogNode: SKNode {
+    private let banks: [SKSpriteNode] = (0..<6).map { _ in
+        let node = SKSpriteNode(color: .white, size: .zero)
+        node.shader = SKShader(source: """
+        void main() {
+            float r = length((v_tex_coord - vec2(0.5)) * 2.0);
+            float a = (1.0 - smoothstep(0.0, 1.0, r)) * 0.12;
+            gl_FragColor = vec4(vec3(0.86, 0.88, 0.87) * a, a) * v_color_mix.a;
+        }
+        """)
+        return node
+    }
+    private var area = CGSize.zero, phase: CGFloat = 0, amount: CGFloat = 1, heightScale: CGFloat = 1, flowSpeed: CGFloat = 1
+    private(set) var active = false
+    override init() { super.init(); banks.forEach { addChild($0) }; isHidden = true }
+    required init?(coder: NSCoder) { fatalError() }
+    func configure(active: Bool, size: CGSize, strength: CGFloat, intensity: CGFloat, scale: CGFloat, speed: CGFloat) {
+        self.active = active; area = size; self.amount = min(1.8, max(0.3, intensity)); heightScale = scale; flowSpeed = speed
+        alpha = strength; isHidden = !active
+        layoutBanks()
+    }
+    func tick(_ dt: CGFloat) {
+        guard active else { return }
+        if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { phase += dt * flowSpeed }
+        layoutBanks()
+    }
+    private func layoutBanks() {
+        let band = min(area.height * 0.28, 230 * min(1.4, max(0.7, heightScale)))
+        for (i, bank) in banks.enumerated() {
+            let k = CGFloat(i)
+            bank.size = CGSize(width: area.width * (0.9 + 0.13 * CGFloat(i % 3)), height: band * (1.7 + 0.13 * CGFloat(i % 2)))
+            bank.position = CGPoint(x: area.width * (0.05 + k * 0.18 + sin(phase * 0.023 + k * 1.9) * 0.10), y: -band * (0.12 + 0.10 * sin(phase * 0.017 + k)))
+            bank.alpha = amount * (0.85 + 0.15 * sin(phase * 0.019 + k))
+        }
+    }
+}

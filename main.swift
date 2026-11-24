@@ -100,7 +100,7 @@ let cloudTextures: [SKTexture] = ["stratus", "ragged", "cirrus"].compactMap { na
 }
 func makeLook(_ mode: Mode) -> Look {
     switch mode {
-    case .sunny:
+    case .sunny, .fog:
         return Look(texture: flakeTexture, aspect: 1, colors: [.white], alpha: 0...0, rate: 0, fall: 0, drag: 0, sway: 0, spin: 0, size: 1...1, bump: 0, settles: false, solidDrift: false)
     case .clouds:
         return Look(texture: cloudTexture, aspect: cloudTexture.size().width / cloudTexture.size().height, colors: [.white], alpha: 0.22...0.36,
@@ -222,6 +222,7 @@ final class RainBead {
 final class SnowScene: SKScene {
     private var beads: [RainBead] = []
     let glass = RainGlassNode()
+    let fog = GroundFogNode()
     var intensity: CGFloat = 1, speedFactor: CGFloat = 1, sizeFactor: CGFloat = 1
     var snowing = true, cursor = true
     var maxResting = 2500
@@ -271,6 +272,7 @@ final class SnowScene: SKScene {
         isUserInteractionEnabled = true
         scaleMode = .resizeFill
         addChild(sun)
+        fog.zPosition = 40; addChild(fog)
         glass.zPosition = 50; addChild(glass)
         addChild(atmosphere)
         addChild(field)
@@ -385,6 +387,7 @@ final class SnowScene: SKScene {
         guard raw > 0, !isPaused else { return }
         updateCloudInput()
         sun.tick(raw)
+        fog.tick(raw)
         glass.tick(raw)
         atmosphere.tick(TimeInterval(raw))
         updateLightning(raw)
@@ -851,6 +854,7 @@ final class Overlay {
             code: weather.current?.weather_code, size: scene.size,
             strength: d.double(forKey: "atmosphereStrength"), paused: d.bool(forKey: "paused"))
         let effect = weather.enabled ? weather.current?.effect : (Mode(rawValue: d.string(forKey: "mode") ?? "") ?? .snow)
+        scene.fog.configure(active: effect == .fog, size: scene.size, strength: CGFloat(d.double(forKey: "opacity")), intensity: CGFloat(d.double(forKey: "intensity")), scale: CGFloat(d.double(forKey: "size")), speed: CGFloat(d.double(forKey: "speed")))
         scene.sun.configure(active: effect == .sunny, city: weather.city, size: scene.size, dust: d.object(forKey: "sunDust") as? Bool != false, strength: CGFloat(d.double(forKey: "opacity")))
         scene.glass.configure(active: (effect == .rain || effect == .storm) && d.object(forKey: "rainGlass") as? Bool != false, size: scene.size, strength: CGFloat(d.double(forKey: "opacity")))
         updateRefraction(d.bool(forKey: "rainRefraction") && d.bool(forKey: "rainGlass") && !d.bool(forKey: "paused") && (effect == .rain || effect == .storm))
